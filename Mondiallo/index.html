@@ -199,6 +199,11 @@
         </div>
     </div>
 
+    <audio id="gameSoundtrack" loop>
+        <source src="aud/soundtrack.mp3" type="audio/mpeg">
+        Il tuo browser non supporta l'elemento audio.
+    </audio>
+
     <script>
         // ============================================================
         // CORREZIONE #5: Canvas DPI-aware per schermi HiDPI/Retina
@@ -230,6 +235,11 @@
         const healButton = document.getElementById('healButton');
         const ammoDisplay = document.getElementById('ammoDisplay');
         const difficultyBadge = document.getElementById('difficultyBadge');
+        const gameSoundtrack = document.getElementById('gameSoundtrack');
+
+        // --- GESTIONE VOLUME MUSICA ---
+        const VOLUME_NORMAL = 0.6; 
+        const VOLUME_MENU = 0.2;   
 
         // ============================================================
         // CORREZIONE #4: Effetti sonori con Web Audio API
@@ -1130,6 +1140,13 @@
             sound.init(); // Inizializza audio al primo click
             initializeGame();
             isGameRunning = true;
+            
+            // Avvia musica di sottofondo
+            gameSoundtrack.volume = VOLUME_NORMAL;
+            gameSoundtrack.play().catch(error => {
+                console.log('Audio autoplay bloccato dal browser');
+            });
+            
             gameStartTime = performance.now();
             lastUpdateTime = performance.now();
             fpsSamples = [];
@@ -1144,6 +1161,9 @@
             if (isPaused) {
                 keys = {}; 
                 
+                // Abbassa volume musica in pausa
+                gameSoundtrack.volume = VOLUME_MENU;
+                
                 messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; 
                 
                 messageTitle.textContent = "⏸️ GIOCO IN PAUSA";
@@ -1153,6 +1173,9 @@
                 startButton.style.display = 'none'; 
                 messageScreen.style.display = 'flex';
             } else {
+                // Ripristina volume musica
+                gameSoundtrack.volume = VOLUME_NORMAL;
+                
                 messageScreen.style.display = 'none';
                 lastUpdateTime = performance.now();
                 requestAnimationFrame(gameLoop);
@@ -1162,6 +1185,9 @@
         function gameOver() {
             isGameRunning = false;
             sound.gameOver();
+            
+            // Abbassa volume musica al game over
+            gameSoundtrack.volume = VOLUME_MENU;
             
             van.color = '#4a5568'; 
             
@@ -1218,6 +1244,10 @@
         // Inizializza audio al primo click (requisito browser)
         document.addEventListener('click', () => {
             sound.init();
+            // Riproduci musica se era bloccata dall'autoplay
+            if (gameSoundtrack.paused) {
+                gameSoundtrack.play().catch(error => {});
+            }
         }, { once: true });
 
         // ============================================================
@@ -1227,6 +1257,12 @@
         window.onload = function () {
             initializeGame();
             isGameRunning = false;
+            
+            // Avvia musica a volume basso nel menu
+            gameSoundtrack.volume = VOLUME_MENU;
+            gameSoundtrack.play().catch(error => {
+                console.log('Audio autoplay bloccato dal browser');
+            });
             
             messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; 
             messageScreen.style.display = 'flex'; 
