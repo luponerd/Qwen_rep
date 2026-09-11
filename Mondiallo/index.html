@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ordine Mondiallo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Stili per il contenitore del gioco */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; 
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            border: 4px solid #f97171; 
+            box-shadow: 0 0 30px rgba(249, 113, 113, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1000px; 
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9; 
+        }
+
+        .stats-bar {
+            background-color: #2d3748;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #4a5568;
+        }
+
+        /* 1. Schermata Messaggio (Menu, Pausa, Game Over Testo) */
+        .game-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: multiply; 
+            
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+        }
+
+        /* 2. LAYER Morte Temporanea (Per background2.jpg e PNG) */
+        #deathImageContainer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 15; 
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            
+            /* Sfondo Fisso per Morte Temporanea */
+            background-image: url('img/background2.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-color: rgba(0, 0, 0, 1); 
+            background-blend-mode: normal;
+        }
+
+        /* Immagine del personaggio (si sovrappone al background2.jpg) */
+        #deathCharacterImage {
+            max-width: 100%;
+            max-height: 80%; 
+            object-fit: contain;
+            z-index: 16;
+            display: none; 
+        }
+
+        /* DARDO: Posizione assoluta e dimensioni */
+        #dartImage {
+            position: absolute;
+            width: 80px; 
+            height: auto;
+            z-index: 17;
+            display: none; 
+        }
+
+        /* Contenuto Messaggio (Testo e Bottone) */
+        .message-content {
+            z-index: 18; /* Assicura che il testo sia sempre in primo piano */
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-message button {
+            transition: all 0.3s ease;
+        }
+
+        .game-message button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(249, 113, 113, 0.5);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="stats-bar">
+            <h1 class="text-2xl font-extrabold text-red-400">Ordine Mondiallo</h1>
+            <span class="text-xl font-bold">Punti: <span id="scoreDisplay">0</span></span>
+            <span class="text-xl font-bold text-red-400">Vite: <span id="livesDisplay">3</span></span>
+            
+            <span class="text-xl font-bold text-pink-400 flex items-center">
+                Cavallo: <span id="cavalloEnergyDisplay">0</span>/5 
+                <button 
+                    id="healButton" 
+                    class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-1 px-3 rounded-md text-sm ml-2 disabled:opacity-50 transition duration-300"
+                    disabled 
+                    onclick="healAlly()">
+                    <span class="font-extrabold">S</span>pruzzo curativo
+                </button>
+            </span>
+
+            <span class="text-xl font-bold text-yellow-400 flex items-center ml-4">
+                Munizioni: <span id="ammoDisplay">0</span>/100
+            </span>
+
+
+            <span class="text-xl font-bold text-red-400">FPS: <span id="fpsDisplay">0</span></span>
+        </div>
+
+        <div class="relative">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="deathImageContainer">
+                <img id="deathCharacterImage" src="" alt="Personaggio di Morte" style="display:none;">
+                <img id="dartImage" src="img/dardo.png" alt="Dardo" style="display:none;">
+            </div>
+
+            <div id="messageScreen" class="game-message">
+                <div class="message-content">
+                    <h1 id="messageTitle" class="text-5xl font-extrabold mb-4 text-red-400">Pronto a Partire?</h1>
+                    <p id="messageText" class="text-xl mb-8">Raccogli le pecore (+10) e schiva le mascherine (😷, -50) e le siringhe (perdi una vita)! Usa <span class="font-bold">S</span> per curare e <span class="font-bold">F</span> per sparare.</p>
+                    <button 
+                        id="startButton" 
+                        class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300"
+                        onclick="startGame()">
+                        Inizia Gioco
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <audio id="gameSoundtrack" loop>
+            <source src="aud/soundtrack.mp3" type="audio/mpeg">
+            Il tuo browser non supporta l'elemento audio.
+        </audio>
+    </div>
+
+    <script>
+        // Variabili globali per il setup di Firebase (non usate, ma mantenute per coerenza con l'ambiente)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? initialAuthToken : null;
+
+        // Elementi DOM
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const livesDisplay = document.getElementById('livesDisplay'); 
+        const fpsDisplay = document.getElementById('fpsDisplay');
+        const messageScreen = document.getElementById('messageScreen'); 
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const startButton = document.getElementById('startButton');
+        const gameSoundtrack = document.getElementById('gameSoundtrack');
+        const deathImageContainer = document.getElementById('deathImageContainer'); 
+        const deathCharacterImage = document.getElementById('deathCharacterImage'); 
+        const dartImage = document.getElementById('dartImage'); 
+        
+        // Elementi DOM Cavallo
+        const cavalloEnergyDisplay = document.getElementById('cavalloEnergyDisplay');
+        const healButton = document.getElementById('healButton');
+        
+        // Elementi DOM Munizioni
+        const ammoDisplay = document.getElementById('ammoDisplay');
+
+
+        // --- GESTIONE VOLUME ---
+        const VOLUME_NORMAL = 0.6; 
+        const VOLUME_MENU = 0.2;   
+
+        // --- GESTIONE IMMAGINI MORTE E RITARDO ---
+        const BASE_IMAGE_MS = 2000;  
+        const FLASH_IMAGE_MS = 1000; 
+        const LIVES_START = 3; 
+
+        const LIFE_IMAGES = {
+            3: {
+                base: 'img/gbionda.png', 
+                flash: 'img/gbionda2.png' 
+            },
+            2: {
+                base: 'img/lupo.png', 
+                flash: 'img/lupo2.png' 
+            },
+            1: 'img/game_over.jpg' 
+        };
+
+        // --- GESTIONE ENERGIA CAVALLO ---
+        const CAVALLO_MAX_ENERGY = 5;
+        const PINK_SHEEP_CHANCE = 0.20; 
+        const PINK_SHEEP_GAIN = 1;
+        
+        // --- GESTIONE FUCILE E MUNIZIONI (MODIFICATI) ---
+        const AMMO_MAX = 100;
+        const AMMO_GAIN = 10;
+        const AMMO_CHANCE = 0.20; // Doppio del drop ratio (era 0.10)
+        const SHOT_COST = 1; // Un colpo di fucile alla volta (era 3)
+        const BULLET_SPEED = 15;
+        const BULLET_WIDTH = 8;
+        const BULLET_HEIGHT = 2;
+
+
+        // Costanti di Gioco
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 450;
+        const VAN_WIDTH = 80;
+        const VAN_HEIGHT = 40;
+        const VAN_SPEED = 5;
+        const DOT_EMOJI_SIZE = 24; 
+        const DOT_SPEED = 3;
+        const SYRINGE_WIDTH = 40; 
+        const SYRINGE_HEIGHT = 10; 
+        const SYRINGE_CHANCE = 0.15; 
+        const SPAWN_INTERVAL = 100;
+        const SCORE_GAIN = 10;
+        const SCORE_LOSS = 50;
+        
+        // Stato del Gioco
+        let score = 0;
+        let lives = LIVES_START; 
+        let cavalloEnergy = 0; 
+        let ammunition = 0; 
+        let bullets = []; 
+        let isGameRunning = false;
+        let isPaused = false; 
+        let van;
+        let dots = []; 
+        let keys = {};
+        let frameCount = 0;
+
+        // Gestione FPS
+        let lastUpdateTime = performance.now();
+
+        // --------------------------------------------------------
+        // FUNZIONE GRAFICA PECORA ROSA
+        // --------------------------------------------------------
+
+        /**
+         * Disegna la Pecora Rosa al centro (x, y) con una data dimensione.
+         */
+        function drawPinkSheep(context, x, y, size) {
+            const halfSize = size / 2;
+            const bodyRadiusY = halfSize * 0.49 - 5; 
+            const bodyRadiusX = halfSize * 0.9; 
+            const headColor = '#800080'; 
+            const featureColor = '#000000'; 
+
+            // 1. Corpo
+            context.fillStyle = '#f472b6'; 
+            context.beginPath();
+            context.ellipse(x, y, bodyRadiusX, bodyRadiusY, 0, 0, Math.PI * 2);
+            context.closePath();
+            context.fill();
+            
+            // Batuffoli
+            context.beginPath();
+            const numSegments = 12;
+            const arcSize = (Math.PI * 2) / numSegments;
+            const fluffRadius = halfSize * 0.35;
+            for (let i = 0; i < numSegments; i++) {
+                const angle = i * arcSize;
+                const centerX = x + (bodyRadiusX + fluffRadius * 0.5) * Math.sin(angle);
+                const centerY = y - (bodyRadiusY + fluffRadius * 0.5) * Math.cos(angle); 
+                context.arc(centerX, centerY, fluffRadius, angle + Math.PI * 0.2, angle + Math.PI * 1.8, false);
+            }
+            context.fillStyle = '#f472b6';
+            context.fill();
+
+
+            // 2. Testa
+            const headX = x + halfSize * 1.3; 
+            const headY = (y - halfSize * 0.2) - 8; 
+            const headSize = halfSize * 0.4;
+
+            context.fillStyle = headColor; 
+            context.beginPath();
+            context.arc(headX, headY, headSize, 0, Math.PI * 2); 
+            context.fill();
+
+            // 3. Orecchie
+            context.fillStyle = featureColor; 
+            context.beginPath();
+            const ear1X = headX - headSize * 0.5;
+            const ear1Y = headY - headSize * 1.2;
+            context.moveTo(ear1X, ear1Y);
+            context.lineTo(ear1X + headSize * 0.3, ear1Y + headSize * 0.6);
+            context.lineTo(ear1X - headSize * 0.3, ear1Y + headSize * 0.6);
+            context.closePath();
+            context.fill();
+            
+            // 4. Occhi
+            context.fillStyle = featureColor; 
+            const eyeSize = headSize * 0.15;
+            context.beginPath();
+            context.arc(headX + 3, headY - headSize * 0.1, eyeSize, 0, Math.PI * 2);
+            context.fill();
+            
+            // 5. Gambe
+            context.fillStyle = featureColor; 
+            const legWidth = halfSize * 0.3;
+            const legHeight = halfSize * 0.6; 
+            const legY = (y + bodyRadiusY - 2) + 8; 
+
+            context.fillRect(x - halfSize * 0.7 - 2, legY, legWidth, legHeight);
+            context.fillRect(x + halfSize * 0.4 + 2, legY, legWidth, legHeight);
+        }
+
+        // --------------------------------------------------------
+        // CLASSI DEL GIOCO
+        // --------------------------------------------------------
+        
+        class Van {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = VAN_WIDTH;
+                this.height = VAN_HEIGHT;
+                this.color = '#ffffff'; 
+                this.defaultColor = '#ffffff';
+            }
+            update() {
+                if (keys['ArrowUp'] && this.y > 0) this.y -= VAN_SPEED;
+                if (keys['ArrowDown'] && this.y < GAME_HEIGHT - this.height) this.y += VAN_SPEED;
+                if (keys['ArrowLeft'] && this.x > 0) this.x -= VAN_SPEED;
+                if (keys['ArrowRight'] && this.x < GAME_WIDTH - this.width) this.x += VAN_SPEED;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                const redStripeHeight = this.height / 4;
+                const redStripeY = this.y + this.height * 0.5 - redStripeHeight / 2;
+                ctx.fillStyle = '#ff0000'; 
+                ctx.fillRect(this.x, redStripeY, this.width, redStripeHeight);
+                ctx.fillStyle = '#60a5fa';
+                const windowWidth = this.width / 3;
+                const windowHeight = this.height / 2;
+                ctx.fillRect(this.x + this.width / 2, this.y + 2, windowWidth, windowHeight - 4);
+                ctx.fillStyle = '#000000';
+                const wheelRadius = 8; 
+                ctx.beginPath();
+                ctx.arc(this.x + wheelRadius, this.y + this.height, wheelRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x + this.width - wheelRadius, this.y + this.height, wheelRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        class Dot {
+            constructor(y, type) {
+                this.x = GAME_WIDTH; 
+                this.y = y; 
+                this.type = type;
+                
+                if (type === 'pink') {
+                    this.emoji = ''; 
+                } else {
+                    this.emoji = type === 'red' ? '🐑' : '😷'; 
+                }
+                
+                this.radius = DOT_EMOJI_SIZE / 2; 
+                this.isCollected = false;
+                this.isHit = false; 
+            }
+            
+            update() { 
+                this.x -= DOT_SPEED; 
+            }
+            
+            draw() {
+                if (this.type === 'pink') {
+                    drawPinkSheep(ctx, this.x, this.y, DOT_EMOJI_SIZE); 
+                } else {
+                    ctx.font = `${DOT_EMOJI_SIZE}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.emoji, this.x, this.y);
+                }
+            }
+            checkCollision(van) {
+                const closestX = Math.max(van.x, Math.min(this.x, van.x + van.width));
+                const closestY = Math.max(van.y, Math.min(this.y, van.y + van.height));
+                const distanceX = this.x - closestX;
+                const distanceY = this.y - closestY;
+                const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+                return distanceSquared < (this.radius * this.radius);
+            }
+        }
+        class Syringe {
+            constructor(y) {
+                this.x = GAME_WIDTH;
+                this.width = SYRINGE_WIDTH;
+                this.height = SYRINGE_HEIGHT;
+                this.y = y; 
+                this.isHit = false;
+                this.isCollected = false; 
+            }
+            update() { this.x -= DOT_SPEED * 1.5; }
+            draw() {
+                ctx.fillStyle = '#ff0000'; 
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = '#cccccc';
+                const needleLength = 10; 
+                const needleOffset = 4;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width, this.y + this.height / 2);
+                ctx.lineTo(this.x + this.width + needleLength, this.y + this.height / 2 - needleOffset);
+                ctx.lineTo(this.x + this.width + needleLength, this.y + this.height / 2 + needleOffset);
+                ctx.closePath();
+                ctx.fill();
+            }
+            checkCollision(van) {
+                return van.x < this.x + this.width &&
+                       van.x + van.width > this.x &&
+                       van.y < this.y + this.height &&
+                       van.y + van.height > this.y;
+            }
+        }
+
+        class AmmoKit {
+            constructor(y) {
+                this.width = 30;
+                this.height = 30;
+                this.x = GAME_WIDTH;
+                this.y = y - this.height / 2; 
+                this.isCollected = false;
+            }
+            update() { this.x -= DOT_SPEED; }
+            draw() {
+                ctx.font = `${this.height}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('📦', this.x + this.width / 2, this.y + this.height / 2); 
+            }
+            checkCollision(van) {
+                return van.x < this.x + this.width &&
+                       van.x + van.width > this.x &&
+                       van.y < this.y + this.height &&
+                       van.y + van.height > this.y;
+            }
+        }
+        
+        class Bullet {
+            constructor(x, y) {
+                this.x = x + VAN_WIDTH; 
+                this.y = y + VAN_HEIGHT / 2;
+                this.width = BULLET_WIDTH;
+                this.height = BULLET_HEIGHT;
+                this.isHit = false;
+            }
+            update() {
+                this.x += BULLET_SPEED;
+            }
+            draw() {
+                ctx.fillStyle = '#FFD700'; // Dorato
+                ctx.fillRect(this.x, this.y - this.height / 2, this.width, this.height);
+            }
+            checkCollision(entity) {
+                const entityX = entity instanceof Dot ? entity.x - entity.radius : entity.x;
+                const entityY = entity instanceof Dot ? entity.y - entity.radius : entity.y;
+                const entityWidth = entity instanceof Dot ? entity.radius * 2 : (entity instanceof Syringe ? entity.width : entity.width);
+                const entityHeight = entity instanceof Dot ? entity.radius * 2 : (entity instanceof Syringe ? entity.height : entity.height);
+
+                return this.x + this.width > entityX &&
+                       this.x < entityX + entityWidth &&
+                       this.y > entityY && 
+                       this.y < entityY + entityHeight; 
+            }
+        }
+
+
+        // --------------------------------------------------------
+        // LOGICA DI GIOCO
+        // --------------------------------------------------------
+
+        function updateLivesDisplay() {
+            let lifeIcons = '';
+            const lifeMap = { 3: '👧🏼', 2: '🐺', 1: '🐴' };
+            const lostLifeIcon = '🐑'; 
+            
+            for (let i = LIVES_START; i >= 1; i--) {
+                lifeIcons += (i <= lives) ? (lifeMap[i] || '❤️') : lostLifeIcon; 
+            }
+            livesDisplay.innerHTML = lifeIcons;
+        }
+
+        /**
+         * Aggiorna il display dell'energia Cavallo e abilita/disabilita il pulsante.
+         */
+        function updateCavalloDisplay() {
+            cavalloEnergyDisplay.textContent = cavalloEnergy;
+            
+            const isReadyToHeal = cavalloEnergy >= CAVALLO_MAX_ENERGY && lives < LIVES_START;
+
+            if (isReadyToHeal) {
+                healButton.disabled = false;
+                // Colore verde per indicare che l'abilità è pronta
+                healButton.classList.remove('bg-pink-600', 'hover:bg-pink-700');
+                healButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            } else {
+                healButton.disabled = true;
+                // Colore pink standard
+                healButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+                healButton.classList.add('bg-pink-600', 'hover:bg-pink-700');
+            }
+        }
+
+        /**
+         * Aggiorna il display delle Munizioni.
+         */
+        function updateAmmoDisplay() {
+            ammoDisplay.textContent = ammunition;
+        }
+
+        /**
+         * Usa l'energia cavallo per recuperare una vita.
+         */
+        function healAlly() {
+            if (cavalloEnergy >= CAVALLO_MAX_ENERGY && lives < LIVES_START) {
+                lives++;
+                cavalloEnergy = 0;
+                updateLivesDisplay();
+                updateCavalloDisplay();
+                
+                van.color = '#10b981'; // Green
+                setTimeout(() => van.color = van.defaultColor, 100);
+            }
+        }
+        
+        /**
+         * Spara un proiettile se ci sono munizioni sufficienti.
+         */
+        function shoot() {
+            if (!isGameRunning || isPaused) return;
+
+            // Usa SHOT_COST (ora 1)
+            if (ammunition >= SHOT_COST) {
+                ammunition -= SHOT_COST;
+                bullets.push(new Bullet(van.x, van.y));
+                updateAmmoDisplay();
+                
+                van.color = '#FFD700'; 
+                setTimeout(() => van.color = van.defaultColor, 50);
+            }
+        }
+
+
+        /**
+         * Mostra la schermata di morte temporanea (PNG + background2.jpg) in due fasi.
+         */
+        function showTemporaryDeathScreen(imageSet) {
+            messageScreen.style.display = 'none';
+            deathImageContainer.style.display = 'flex';
+            deathCharacterImage.src = imageSet.base;
+            deathCharacterImage.style.display = 'block';
+
+            isPaused = true;
+            gameSoundtrack.volume = VOLUME_MENU;
+
+            dartImage.style.transition = 'none';
+            dartImage.style.transform = 'translate(0, 0) rotate(10deg)'; 
+            dartImage.style.top = '0';
+            dartImage.style.right = '0'; 
+            dartImage.style.display = 'block'; 
+
+            void dartImage.offsetWidth; 
+
+            dartImage.style.transition = `transform ${BASE_IMAGE_MS}ms linear`;
+            dartImage.style.transform = 'translate(-280px, 260px) rotate(15deg)'; 
+
+            // FASE 1: Immagine BASE (2 secondi)
+            setTimeout(() => {
+                // 3. CAMBIO: Passa all'immagine FLASH 
+                deathCharacterImage.src = imageSet.flash;
+                
+                // FASE 2: Immagine FLASH (1 secondo)
+                setTimeout(() => {
+                    keys = {};
+                    deathImageContainer.style.display = 'none';
+                    deathCharacterImage.style.display = 'none';
+                    dartImage.style.display = 'none'; 
+
+                    gameSoundtrack.volume = VOLUME_NORMAL;
+                    isPaused = false;
+                    requestAnimationFrame(gameLoop);
+                }, FLASH_IMAGE_MS); 
+
+            }, BASE_IMAGE_MS); 
+        }
+
+        function initializeGame() {
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+            score = 0;
+            lives = LIVES_START; 
+            cavalloEnergy = 0; 
+            ammunition = 0; 
+            bullets = []; 
+            isPaused = false;
+            dots = [];
+            frameCount = 0;
+            scoreDisplay.textContent = score;
+            updateLivesDisplay();
+            updateCavalloDisplay(); 
+            updateAmmoDisplay(); 
+            const startY = GAME_HEIGHT / 2 - VAN_HEIGHT / 2;
+            van = new Van(50, startY);
+            
+            messageScreen.style.display = 'none'; 
+            deathImageContainer.style.display = 'none'; 
+            deathCharacterImage.style.display = 'none'; 
+            dartImage.style.display = 'none'; 
+        }
+
+        function spawnDotOrSyringe() {
+            const isSyringe = Math.random() < SYRINGE_CHANCE;
+            const isPinkSheep = !isSyringe && Math.random() < PINK_SHEEP_CHANCE;
+            // Chance per kit Munizioni (0.20)
+            const isAmmoKit = !isSyringe && !isPinkSheep && Math.random() < AMMO_CHANCE; 
+
+            let entityHeight;
+            let entity;
+
+            if (isAmmoKit) {
+                entityHeight = 30; 
+                const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight; 
+                entity = new AmmoKit(y);
+            } else if (isSyringe) {
+                entityHeight = SYRINGE_HEIGHT;
+                const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight; 
+                entity = new Syringe(y);
+            } else {
+                entityHeight = DOT_EMOJI_SIZE;
+                const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight;
+                let type = isPinkSheep ? 'pink' : (Math.random() < 0.7 ? 'red' : 'blue');
+                entity = new Dot(y, type);
+            }
+
+            if (entity) dots.push(entity);
+        }
+
+        function updateGame() {
+            if (isPaused) return;
+            van.update();
+            
+            // 1. Update/Filter Dots, Syringes, and AmmoKits (Off-screen check)
+            dots.forEach(entity => entity.update()); 
+            dots = dots.filter(entity => {
+                const entityWidth = (entity instanceof Syringe) ? entity.width + 10 : (entity instanceof Dot ? entity.radius * 2 : entity.width);
+                return entity.x > -entityWidth;
+            });
+
+            if (frameCount % SPAWN_INTERVAL === 0) {
+                spawnDotOrSyringe();
+            }
+
+            // 2. Update/Filter Bullets
+            bullets.forEach(bullet => bullet.update());
+            bullets = bullets.filter(bullet => bullet.x < GAME_WIDTH); 
+
+            // 3. Check Bullet-Enemy Collisions (Mascherine e Siringhe)
+            bullets.forEach(bullet => {
+                if (bullet.isHit) return;
+
+                dots.forEach(entity => {
+                    // Controlla solo Siringhe o Dot di tipo 'blue' (Mascherine)
+                    if (entity instanceof Syringe || (entity instanceof Dot && entity.type === 'blue')) {
+                        if (entity.isHit || entity.isCollected) return;
+
+                        if (bullet.checkCollision(entity)) {
+                            bullet.isHit = true;
+                            entity.isHit = true; 
+                            
+                            // Feedback visivo
+                            van.color = '#FFD700'; 
+                            setTimeout(() => van.color = van.defaultColor, 50);
+                        }
+                    }
+                });
+            });
+            
+            // Rimuovi nemici colpiti dai proiettili e proiettili colpiti
+            bullets = bullets.filter(bullet => !bullet.isHit);
+            dots = dots.filter(entity => !entity.isHit); 
+
+            // 4. Check Van-Entity Collisions
+            dots.forEach(entity => {
+                if (entity.isCollected) return;
+
+                if (entity.checkCollision(van)) {
+                    
+                    if (entity instanceof AmmoKit) { 
+                        entity.isCollected = true;
+                        ammunition = Math.min(ammunition + AMMO_GAIN, AMMO_MAX);
+                        updateAmmoDisplay();
+                    } else if (entity instanceof Dot) {
+                        entity.isCollected = true;
+                        
+                        if (entity.type === 'red') {
+                            score += SCORE_GAIN;
+                        } else if (entity.type === 'blue') {
+                            score -= SCORE_LOSS; // Mascherina presa senza sparare
+                        } else if (entity.type === 'pink') { 
+                            if (cavalloEnergy < CAVALLO_MAX_ENERGY) {
+                                cavalloEnergy = Math.min(cavalloEnergy + PINK_SHEEP_GAIN, CAVALLO_MAX_ENERGY);
+                            }
+                            updateCavalloDisplay();
+                        }
+                        
+                        scoreDisplay.textContent = score;
+                    } 
+                    else if (entity instanceof Syringe) {
+                        entity.isHit = true; 
+                        
+                        const lifeLost = lives; 
+                        lives--;
+                        updateLivesDisplay();
+                        updateCavalloDisplay(); 
+                        
+                        van.color = '#ff0000'; 
+                        setTimeout(() => van.color = van.defaultColor, 100);
+                        
+                        isPaused = true;
+                        
+                        if (lives >= 1) {
+                            showTemporaryDeathScreen(LIFE_IMAGES[lifeLost]);
+                        }
+                    }
+                }
+            });
+
+            // Rimuovi entità raccolte (Dots e AmmoKits)
+            dots = dots.filter(entity => !entity.isCollected);
+
+            if (lives <= 0) {
+                gameOver();
+            }
+
+            frameCount++;
+        }
+
+        function drawRoad() {
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            const roadLineHeight = 5;
+            const roadLineY = GAME_HEIGHT / 2 - roadLineHeight / 2;
+            const dashLength = 20;
+            const dashGap = 20;
+            const lineSpeed = DOT_SPEED; 
+            ctx.strokeStyle = '#fef3c7';
+            ctx.lineWidth = roadLineHeight;
+            ctx.lineCap = 'butt';
+            const totalWidth = dashLength + dashGap;
+            const lineOffset = (frameCount * lineSpeed) % totalWidth;
+
+            ctx.beginPath();
+            for (let i = 0; i < GAME_WIDTH + totalWidth; i += totalWidth) {
+                let startX = i - lineOffset;
+                if (startX < -dashLength) {
+                    startX += totalWidth; 
+                }
+                if (startX + dashLength > 0 && startX < GAME_WIDTH) {
+                    ctx.moveTo(startX, roadLineY);
+                    ctx.lineTo(startX + dashLength, roadLineY);
+                }
+            }
+            ctx.stroke();
+            ctx.fillStyle = '#65a30d';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT * 0.1);
+            ctx.fillRect(0, GAME_HEIGHT * 0.9, GAME_WIDTH, GAME_HEIGHT * 0.1);
+        }
+
+        function drawGame() {
+            drawRoad();
+            dots.forEach(entity => entity.draw());
+            bullets.forEach(bullet => bullet.draw()); 
+            van.draw();
+        }
+
+        function gameLoop(timestamp) {
+            if (!isGameRunning) return;
+            if (isPaused) return;
+
+            const delta = timestamp - lastUpdateTime;
+            const fps = Math.round(1000 / delta);
+            fpsDisplay.textContent = fps;
+            lastUpdateTime = timestamp;
+
+            updateGame();
+            drawGame();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * Avvia il gioco.
+         */
+        function startGame() {
+            initializeGame();
+            isGameRunning = true;
+            
+            gameSoundtrack.volume = VOLUME_NORMAL;
+            gameSoundtrack.play().catch(error => {});
+            
+            gameLoop(performance.now());
+        }
+
+        /**
+         * Ferma/riprende il gioco e regola il volume (Pausa).
+         */
+        function togglePause() {
+            if (!isGameRunning || lives <= 0 || deathImageContainer.style.display === 'flex') return; 
+
+            isPaused = !isPaused;
+            
+            if (isPaused) {
+                keys = {}; 
+                gameSoundtrack.volume = VOLUME_MENU;
+                gameSoundtrack.play().catch(error => {}); 
+                
+                messageScreen.style.backgroundImage = "url('img/wallpaper.png')";
+                messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.35)'; 
+                messageScreen.style.backgroundBlendMode = 'multiply';
+                
+                messageTitle.textContent = "GIOCO IN PAUSA";
+                messageText.textContent = "Premi ESC per riprendere.";
+                messageTitle.style.display = 'block';
+                messageText.style.display = 'block';
+                startButton.style.display = 'none'; 
+                messageScreen.style.display = 'flex';
+            } else {
+                gameSoundtrack.volume = VOLUME_NORMAL;
+                messageScreen.style.display = 'none';
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        /**
+         * Termina il gioco e mostra la schermata Game Over.
+         */
+        function gameOver() {
+            isGameRunning = false;
+            
+            gameSoundtrack.volume = VOLUME_MENU;
+            van.color = '#4a5568'; 
+            
+            deathImageContainer.style.display = 'none';
+            deathCharacterImage.style.display = 'none';
+            dartImage.style.display = 'none';
+
+            messageScreen.style.backgroundImage = `url('${LIFE_IMAGES[1]}')`; 
+            messageScreen.style.backgroundSize = 'cover';
+            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'; 
+            messageScreen.style.backgroundBlendMode = 'multiply'; 
+            
+            messageTitle.textContent = "GAME OVER!";
+            messageText.textContent = `Vi hanno siringati tutti. Punteggio finale: ${score}.`; 
+            startButton.textContent = "Guarisci dalla morte";
+            
+            messageTitle.style.display = 'block';
+            messageText.style.display = 'block';
+            startButton.style.display = 'inline-block';
+            messageScreen.style.display = 'flex'; 
+        }
+
+        // --------------------------------------------------------
+        // GESTIONE INPUT 
+        // --------------------------------------------------------
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                togglePause();
+            }
+            
+            // Attivazione Spruzzo Curativo con 'S'
+            if (e.key.toUpperCase() === 'S' && !healButton.disabled && isGameRunning && !isPaused) {
+                healAlly();
+            }
+            
+            // Attivazione Fucile con 'F'
+            if (e.key.toUpperCase() === 'F' && isGameRunning && !isPaused) {
+                shoot();
+            }
+
+            if (isGameRunning && !isPaused) {
+                keys[e.key] = true;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (isGameRunning && !isPaused) {
+                keys[e.key] = false;
+            }
+        });
+        
+        document.addEventListener('click', () => {
+            if (gameSoundtrack.paused || gameSoundtrack.volume < VOLUME_NORMAL) {
+                gameSoundtrack.volume = VOLUME_NORMAL; 
+                gameSoundtrack.play().catch(error => {});
+            }
+        }, { once: true });
+
+
+        // --------------------------------------------------------
+        // SETUP INIZIALE
+        // --------------------------------------------------------
+
+        window.onload = function () {
+            initializeGame();
+            isGameRunning = false;
+            gameSoundtrack.volume = VOLUME_MENU; 
+            gameSoundtrack.play().catch(error => {}); 
+            
+            messageScreen.style.backgroundImage = "url('img/wallpaper.png')";
+            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.35)'; 
+            
+            messageScreen.style.display = 'flex'; 
+            messageTitle.style.display = 'block';
+            messageText.style.display = 'block';
+            startButton.style.display = 'inline-block';
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pink Sheep Designer</title>
+    <style>
+        body { margin: 0; background-color: #3a3a3a; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #designCanvas { border: 2px solid #f97171; background-color: #2d3748; }
+    </style>
+</head>
+<body>
+
+    <canvas id="designCanvas" width="400" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('designCanvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_CENTER_X = canvas.width / 2;
+        const CANVAS_CENTER_Y = canvas.height / 2;
+        
+        // Questo è il valore che la Pecora Rosa usa nel tuo gioco (24px)
+        const DOT_EMOJI_SIZE = 48; // Aumentato a 48 qui per vederla meglio nel sandbox
+
+        // ----------------------------------------------------------------
+        // 🐑 FUNZIONE PER DISEGNARE LA PECORA ROSA (DA MODIFICARE QUI) 🐑
+        // ----------------------------------------------------------------
+        
+        /**
+         * Disegna la Pecora Rosa al centro (x, y) con una data dimensione.
+         * @param {CanvasRenderingContext2D} context - Il contesto di disegno.
+         * @param {number} x - Coordinata X centrale.
+         * @param {number} y - Coordinata Y centrale.
+         * @param {number} size - Dimensione base dell'oggetto.
+         */
+        function drawPinkSheep(context, x, y, size) {
+            const halfSize = size / 2;
+            const radius = halfSize * 0.9;
+            
+            // 1. Corpo (Nuvoletta/Ovale Rosa)
+            context.fillStyle = '#f472b6'; // Rosa pastello
+            context.beginPath();
+            context.arc(x, y, radius, 0, Math.PI * 2); 
+            context.fill();
+            
+            // 2. Testa (Cerchio)
+            context.fillStyle = '#cccccc'; 
+            context.beginPath();
+            // Posiziona la testa in alto a destra
+            context.arc(x + halfSize * 0.5, y - halfSize * 0.1, halfSize * 0.4, 0, Math.PI * 2);
+            context.fill();
+
+            // 3. Orecchie (Triangoli semplici)
+            context.fillStyle = '#cccccc'; 
+            context.beginPath();
+            // Orecchio 1 (Sinistra)
+            context.moveTo(x + halfSize * 0.3, y - halfSize * 0.6);
+            context.lineTo(x + halfSize * 0.5, y - halfSize * 0.4);
+            context.lineTo(x + halfSize * 0.2, y - halfSize * 0.4);
+            // Orecchio 2 (Destra)
+            context.moveTo(x + halfSize * 0.7, y - halfSize * 0.5);
+            context.lineTo(x + halfSize * 0.9, y - halfSize * 0.3);
+            context.lineTo(x + halfSize * 0.6, y - halfSize * 0.3);
+            context.closePath();
+            context.fill();
+
+            // 4. Gambe (Due rettangoli base)
+            context.fillStyle = '#4a4a4a'; // Grigio scuro
+            const legWidth = halfSize * 0.3;
+            const legHeight = halfSize * 0.4;
+            const legY = y + halfSize * 0.5;
+            context.fillRect(x - halfSize * 0.5, legY, legWidth, legHeight);
+            context.fillRect(x + halfSize * 0.2, legY, legWidth, legHeight);
+        }
+
+        // ----------------------------------------------------------------
+        // INIZIALIZZAZIONE SANDBOX
+        // ----------------------------------------------------------------
+
+        // Disegna lo sfondo e chiama la funzione
+        function initSandbox() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Il terzo parametro è la dimensione. Modifica DOT_EMOJI_SIZE per cambiarla
+            drawPinkSheep(ctx, CANVAS_CENTER_X, CANVAS_CENTER_Y, DOT_EMOJI_SIZE); 
+        }
+
+        initSandbox(); 
+    </script>
+</body>
+</html>

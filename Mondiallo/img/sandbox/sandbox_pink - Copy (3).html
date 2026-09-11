@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pink Sheep Designer</title>
+    <style>
+        body { margin: 0; background-color: #3a3a3a; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #designCanvas { border: 2px solid #f97171; background-color: #2d3748; }
+    </style>
+</head>
+<body>
+
+    <canvas id="designCanvas" width="400" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('designCanvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_CENTER_X = canvas.width / 2;
+        const CANVAS_CENTER_Y = canvas.height / 2;
+        
+        // Questo è il valore che la Pecora Rosa usa nel tuo gioco (24px)
+        const DOT_EMOJI_SIZE = 48; // Aumentato a 48 qui per vederla meglio nel sandbox
+
+        // ----------------------------------------------------------------
+        // 🐑 FUNZIONE PER DISEGNARE LA PECORA ROSA (DA MODIFICARE QUI) 🐑
+        // ----------------------------------------------------------------
+        
+        /**
+         * Disegna la Pecora Rosa al centro (x, y) con una data dimensione.
+         * @param {CanvasRenderingContext2D} context - Il contesto di disegno.
+         * @param {number} x - Coordinata X centrale.
+         * @param {number} y - Coordinata Y centrale.
+         * @param {number} size - Dimensione base dell'oggetto.
+         */
+        function drawPinkSheep(context, x, y, size) {
+            const halfSize = size / 2;
+            
+            // Parametri per il corpo ovale
+            const bodyRadiusY = halfSize * 0.9; 
+            const bodyRadiusX = halfSize * 1.1; 
+            
+            // Colore della testa e delle orecchie (Viola)
+            const headColor = '#800080'; // Nuovo colore viola
+            const featureColor = '#000000'; // Nero per occhi e orecchie
+
+            // 1. Corpo (Nuvoletta/Ovale Rosa con archi multipli ARROTONDATI)
+            context.fillStyle = '#f472b6'; // Rosa pastello
+            context.beginPath();
+            
+            const numSegments = 12; // Numero di batuffoli nel contorno 
+            const arcSize = (Math.PI * 2) / numSegments; 
+            const fluffRadius = halfSize * 0.3; // Raggio di ogni singolo batuffolo (quanto sporge)
+            
+            // Inizia il percorso dal punto centrale superiore per poi muoversi lungo il perimetro
+            context.moveTo(x, y - bodyRadiusY + fluffRadius); 
+
+            for (let i = 0; i < numSegments; i++) {
+                // Calcola l'angolo centrale di questo segmento
+                const angle = i * arcSize;
+                
+                // Calcola il punto di destinazione sull'ellisse ideale (il bordo interiore)
+                // Il calcolo di nextX/Y non viene usato direttamente per disegnare qui,
+                // ma è teoricamente il punto in cui finisce il segmento precedente.
+
+                // Il punto centrale del batuffolo (leggermente all'esterno)
+                const centerX = x + (bodyRadiusX + fluffRadius * 0.5) * Math.sin(angle);
+                const centerY = y - (bodyRadiusY + fluffRadius * 0.5) * Math.cos(angle); 
+                
+                // Usa un arco per disegnare il "batuffolo" che parte dal punto precedente
+                context.arc(centerX, centerY, fluffRadius, angle + Math.PI * 0.2, angle + Math.PI * 1.8, false);
+            }
+            
+            // Chiude il percorso e lo riempie
+            context.closePath();
+            context.fill();
+            
+            // 2. Testa (Cerchio Viola)
+            // La testa è spostata più in alto e a destra per sporgere di più
+            const headX = x + halfSize * 1.0; 
+            const headY = y - halfSize * 0.1;
+            const headSize = halfSize * 0.4;
+
+            context.fillStyle = headColor; // Colore Viola
+            context.beginPath();
+            context.arc(headX, headY, headSize, 0, Math.PI * 2); 
+            context.fill();
+
+            // 3. Orecchie (Triangoli semplici NERI)
+            context.fillStyle = featureColor; // Nero
+            context.beginPath();
+            
+            // Orecchio 1 (Sinistra)
+            const ear1X = headX - headSize * 0.5;
+            const ear1Y = headY - headSize * 1.2;
+            context.moveTo(ear1X, ear1Y);
+            context.lineTo(ear1X + headSize * 0.3, ear1Y + headSize * 0.6);
+            context.lineTo(ear1X - headSize * 0.3, ear1Y + headSize * 0.6);
+            
+            // Orecchio 2 (Destra)
+            const ear2X = headX + headSize * 0.5;
+            const ear2Y = headY - headSize * 1.2;
+            context.moveTo(ear2X, ear2Y);
+            context.lineTo(ear2X + headSize * 0.3, ear2Y + headSize * 0.6);
+            context.lineTo(ear2X - headSize * 0.3, ear2Y + headSize * 0.6);
+            
+            context.closePath();
+            context.fill();
+            
+            // 4. Occhi (Due cerchi NERI)
+            context.fillStyle = featureColor; // Nero
+            const eyeSize = headSize * 0.15;
+            
+            // Occhio sinistro
+            context.beginPath();
+            context.arc(headX - headSize * 0.25, headY - headSize * 0.1, eyeSize, 0, Math.PI * 2);
+            context.fill();
+            
+            // Occhio destro
+            context.beginPath();
+            context.arc(headX + headSize * 0.25, headY - headSize * 0.1, eyeSize, 0, Math.PI * 2);
+            context.fill();
+
+
+            // 5. Gambe (Due rettangoli base)
+            context.fillStyle = featureColor; // Nero per le zampe
+            const legWidth = halfSize * 0.3;
+            const legHeight = halfSize * 0.4;
+            const legY = y + halfSize * 0.8; // Spostate più in basso per sporgere di più
+
+            // Zampa sinistra (spostata più a sinistra)
+            context.fillRect(x - halfSize * 0.7, legY, legWidth, legHeight);
+            
+            // Zampa destra (spostata più a destra)
+            context.fillRect(x + halfSize * 0.4, legY, legWidth, legHeight);
+        }
+
+        // ----------------------------------------------------------------
+        // INIZIALIZZAZIONE SANDBOX
+        // ----------------------------------------------------------------
+
+        // Disegna lo sfondo e chiama la funzione
+        function initSandbox() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Il terzo parametro è la dimensione. Modifica DOT_EMOJI_SIZE per cambiarla
+            drawPinkSheep(ctx, CANVAS_CENTER_X, CANVAS_CENTER_Y, DOT_EMOJI_SIZE); 
+        }
+
+        initSandbox(); 
+    </script>
+</body>
+</html>
