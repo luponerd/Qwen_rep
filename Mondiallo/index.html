@@ -121,23 +121,41 @@
 
         .magic-particle {
             position: absolute;
-            width: 10px;
-            height: 10px;
-            background: radial-gradient(circle, #10b981 0%, #34d399 50%, transparent 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(220, 240, 255, 0.8) 100%);
             border-radius: 50%;
-            animation: sprayParticle 1s ease-out forwards;
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.6);
+            z-index: 20;
         }
 
-        @keyframes sprayParticle {
+        .water-stream {
+            animation: waterStream 0.4s linear forwards;
+        }
+
+        .water-splash {
+            animation: waterSplash 0.5s ease-out forwards;
+        }
+
+        @keyframes waterStream {
             0% {
-                transform: translate(0, 0) scale(0);
+                transform: translate(var(--startX), var(--startY)) scale(1);
+                opacity: 0.9;
+            }
+            100% {
+                transform: translate(calc(var(--startX) + var(--dx)), calc(var(--startY) + var(--dy))) scale(0.8);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes waterSplash {
+            0% {
+                transform: translate(var(--startX), var(--startY)) scale(0.5);
                 opacity: 1;
             }
             50% {
                 opacity: 0.8;
             }
             100% {
-                transform: translate(var(--tx), var(--ty)) scale(1.5);
+                transform: translate(calc(var(--startX) + var(--dx)), calc(var(--startY) + var(--dy))) scale(1.5);
                 opacity: 0;
             }
         }
@@ -225,7 +243,7 @@
             <span class="text-lg font-bold text-red-400">Vite: <span id="livesDisplay">3</span></span>
             
             <span class="text-lg font-bold text-pink-400 flex items-center">
-                🐴 <span id="cavalloEnergyDisplay">0</span>/5 
+                🐴 <span id="cavalloEnergyDisplay">0</span>/10 
                 <button 
                     id="healButton" 
                     class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-1 px-3 rounded-md text-sm ml-2 disabled:opacity-50 transition duration-300"
@@ -273,9 +291,9 @@
                         <span class="text-red-300">💥 Spara alle siringhe: +100 punti</span><br><br>
                         <span class="font-bold text-yellow-300">F</span> = Spara &nbsp;|&nbsp; 
                         <span class="font-bold text-pink-300">S</span> = Cura &nbsp;|&nbsp; 
-                        <span class="font-bold text-blue-300">H</span> = Incanta 🛼<br>
+                        <span class="font-bold text-blue-300">H</span> = Clacson 🛼<br>
                         <span class="font-bold text-gray-300">ESC</span> = Pausa<br><br>
-                        <span class="text-sm text-gray-400">Le pattinatrici appaiono casualmente ai lati dello schermo. Premi H per farle agganciare al furgone!</span>
+                        <span class="text-sm text-gray-400">🛼 Le pattinatrici appaiono casualmente. Premi H per farle avvicinare, poi vai loro incontro per farle agganciare! In coda raccolgono oggetti come il furgone. Attento a non investirle!</span>
                     </p>
                     <button 
                         id="startButton" 
@@ -415,9 +433,37 @@
             }
 
             honk() {
-                // Suono clacson: due toni brevi
-                this.playTone(440, 0.15, 'square', 0.2);
-                setTimeout(() => this.playTone(520, 0.15, 'square', 0.2), 180);
+                // Suono clacson: usa il file audio clackson.mp3
+                try {
+                    const clackson = new Audio('aud/clackson.mp3');
+                    clackson.volume = 0.7;
+                    clackson.play().catch(e => {
+                        // Fallback se il file non esiste
+                        this.playTone(440, 0.15, 'square', 0.2);
+                        setTimeout(() => this.playTone(520, 0.15, 'square', 0.2), 180);
+                    });
+                } catch(e) {
+                    // Fallback sintetico
+                    this.playTone(440, 0.15, 'square', 0.2);
+                    setTimeout(() => this.playTone(520, 0.15, 'square', 0.2), 180);
+                }
+            }
+
+            crash() {
+                // Suono incidente: usa il file audio clap.mp3
+                try {
+                    const clap = new Audio('aud/clap.mp3');
+                    clap.volume = 0.8;
+                    clap.play().catch(e => {
+                        // Fallback se il file non esiste
+                        this.playTone(100, 0.3, 'sawtooth', 0.3);
+                        setTimeout(() => this.playTone(80, 0.4, 'sawtooth', 0.2), 100);
+                    });
+                } catch(e) {
+                    // Fallback sintetico
+                    this.playTone(100, 0.3, 'sawtooth', 0.3);
+                    setTimeout(() => this.playTone(80, 0.4, 'sawtooth', 0.2), 100);
+                }
             }
         }
 
@@ -433,11 +479,12 @@
         // CORREZIONE #3: Difficoltà progressiva
         // ============================================================
         const DIFFICULTY_LEVELS = [
-            { name: 'Facile', color: 'bg-green-500', dotSpeed: 2.5, spawnInterval: 120, syringeChance: 0.10, time: 0 },
-            { name: 'Normale', color: 'bg-yellow-500', dotSpeed: 3.5, spawnInterval: 90, syringeChance: 0.15, time: 30 },
-            { name: 'Difficile', color: 'bg-orange-500', dotSpeed: 4.5, spawnInterval: 70, syringeChance: 0.20, time: 60 },
-            { name: 'Estremo', color: 'bg-red-500', dotSpeed: 5.5, spawnInterval: 50, syringeChance: 0.25, time: 120 },
-            { name: 'IMPOSSIBILE', color: 'bg-purple-600', dotSpeed: 7, spawnInterval: 35, syringeChance: 0.30, time: 180 },
+            { name: 'Facile', color: 'bg-green-500', dotSpeed: 2.5, spawnInterval: 120, syringeChance: 0.10, score: 0 },
+            { name: 'Normale', color: 'bg-yellow-500', dotSpeed: 3.5, spawnInterval: 90, syringeChance: 0.15, score: 100 },
+            { name: 'Difficile', color: 'bg-orange-500', dotSpeed: 4.5, spawnInterval: 70, syringeChance: 0.20, score: 250 },
+            { name: 'Estremo', color: 'bg-red-500', dotSpeed: 5.5, spawnInterval: 50, syringeChance: 0.25, score: 500 },
+            { name: 'IMPOSSIBILE', color: 'bg-purple-600', dotSpeed: 7, spawnInterval: 35, syringeChance: 0.30, score: 1000 },
+            { name: 'INFERNALE', color: 'bg-pink-700', dotSpeed: 9, spawnInterval: 25, syringeChance: 0.35, score: 2000 },
         ];
 
         let currentDifficulty = 0;
@@ -446,7 +493,7 @@
         function updateDifficulty() {
             let newLevel = 0;
             for (let i = DIFFICULTY_LEVELS.length - 1; i >= 0; i--) {
-                if (gameTime >= DIFFICULTY_LEVELS[i].time) {
+                if (score >= DIFFICULTY_LEVELS[i].score) {
                     newLevel = i;
                     break;
                 }
@@ -467,7 +514,7 @@
         // ============================================================
         // COSTANTI DI GIOCO
         // ============================================================
-        const VAN_WIDTH = 80;
+        const VAN_WIDTH = 96; // Aumentato del 20% (da 80 a 96)
         const VAN_HEIGHT = 40;
         const VAN_SPEED = 300; // pixel al secondo (non per frame!)
         const DOT_EMOJI_SIZE = 28; 
@@ -481,7 +528,7 @@
         const INVINCIBILITY_FLASH_RATE = 150; // ms
 
         // Cavallo
-        const CAVALLO_MAX_ENERGY = 5;
+        const CAVALLO_MAX_ENERGY = 10; // Aumentato da 5 a 10
         const PINK_SHEEP_CHANCE = 0.20; 
         const PINK_SHEEP_GAIN = 1;
         
@@ -526,6 +573,13 @@
         const SKATER_ANIMATION_SPEED = 200; // ms per frame
         const MAX_SKATERS = 3;
         
+        // Sistema sparo continuo
+        let isShooting = false;
+        let shotCount = 0;
+        let lastShotTime = 0;
+        const SECOND_SHOT_DELAY = 250; // ms per il secondo colpo
+        const FOLLOWING_SHOT_DELAY = 150; // ms per il 3° colpo e successivi
+        
         // Spawn casuale incrementale
         let skaterSpawnChance = 0.05; // parte dal 5%
         let skaterSpawnTimer = 0;
@@ -550,72 +604,129 @@
         // SISTEMA PATTINATRICI
         // ============================================================
         
+        const SKATER_SPEED = 120; // pixel al secondo (inferiore al VAN_SPEED di 300)
+        const SKATER_APPROACH_SPEED = 180; // velocità quando si avvicinano col clacson
+        const SKATER_SIZE = 40; // dimensione pattinatrice
+        
         class Skater {
-            constructor(x, y, attached = false) {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                this.attached = attached; // true se agganciata al furgone
-                this.offsetX = 0; // offset quando agganciata
-                this.offsetY = 0;
-                this.speed = 2 + Math.random() * 2; // velocità pattinatrice libera
-                this.direction = Math.random() < 0.5 ? -1 : 1; // direzione casuale
+                this.attached = false;
+                this.approaching = false; // true quando si avvicina col clacson
+                this.queueIndex = -1; // posizione nella coda (-1 se non in coda)
+                this.speed = SKATER_SPEED;
+                this.direction = 1; // 1 = destra, -1 = sinistra
+                this.targetX = x;
+                this.targetY = y;
                 
                 this.element = document.createElement('img');
                 this.element.className = 'skater';
                 this.element.src = 'img/skater1.png';
                 this.element.style.display = 'block';
+                this.element.style.width = SKATER_SIZE + 'px';
                 this.element.style.left = x + 'px';
                 this.element.style.top = y + 'px';
-                
-                // Flip orizzontale basato sulla direzione
-                if (this.direction < 0) {
-                    this.element.style.transform = 'scaleX(-1)';
-                }
                 
                 document.getElementById('skatersContainer').appendChild(this.element);
             }
             
-            update(dt, vanX, vanY, vanWidth, vanHeight) {
+            update(dt, vanX, vanY, vanWidth, vanHeight, queuePositions) {
                 if (this.attached) {
-                    // Segui il furgone
-                    const targetX = vanX + this.offsetX;
-                    const targetY = vanY + vanHeight + this.offsetY;
+                    // Segui la posizione nella coda
+                    if (this.queueIndex >= 0 && queuePositions[this.queueIndex]) {
+                        const target = queuePositions[this.queueIndex];
+                        // Movimento fluido verso la posizione target
+                        const dx = target.x - this.x;
+                        const dy = target.y - this.y;
+                        this.x += dx * 0.15;
+                        this.y += dy * 0.15;
+                    }
+                } else if (this.approaching) {
+                    // Si avvicina al furgone (ma non si aggancia automaticamente)
+                    const dx = vanX + vanWidth/2 - this.x;
+                    const dy = vanY + vanHeight + 30 - this.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
                     
-                    // Movimento fluido verso la posizione target
-                    this.x += (targetX - this.x) * 0.1;
-                    this.y += (targetY - this.y) * 0.1;
+                    if (dist > 5) {
+                        this.x += (dx / dist) * SKATER_APPROACH_SPEED * dt;
+                        this.y += (dy / dist) * SKATER_APPROACH_SPEED * dt;
+                    }
+                    
+                    // Se è molto vicina, smetti di avvicinarsi (aspetta che il giocatore la raccolga)
+                    if (dist < 60) {
+                        this.approaching = false;
+                    }
                 } else {
-                    // Pattinatrice libera: si muove sullo schermo
-                    this.x += this.speed * this.direction * dt * 60;
+                    // Pattinatrice libera: si muove lentamente
+                    this.x += this.speed * this.direction * dt;
                     
                     // Rimbalza sui bordi
                     if (this.x < 0) {
                         this.x = 0;
                         this.direction = 1;
-                        this.element.style.transform = 'scaleX(1)';
-                    } else if (this.x > GAME_WIDTH - 50) {
-                        this.x = GAME_WIDTH - 50;
+                    } else if (this.x > GAME_WIDTH - SKATER_SIZE) {
+                        this.x = GAME_WIDTH - SKATER_SIZE;
                         this.direction = -1;
-                        this.element.style.transform = 'scaleX(-1)';
                     }
+                }
+                
+                // Aggiorna orientamento visivo
+                if (this.direction > 0) {
+                    this.element.style.transform = 'scaleX(1)';
+                } else {
+                    this.element.style.transform = 'scaleX(-1)';
                 }
                 
                 this.element.style.left = this.x + 'px';
                 this.element.style.top = this.y + 'px';
             }
             
-            attach(vanX, vanY, vanWidth, vanHeight) {
+            attachToQueue(queueIndex) {
                 this.attached = true;
-                // Calcola offset casuale dietro al furgone
-                this.offsetX = -30 + Math.random() * 60;
-                this.offsetY = 10 + Math.random() * 20;
+                this.queueIndex = queueIndex;
+                this.approaching = false;
                 
                 // Effetto visivo: scintille quando si aggancia
-                spawnParticles(this.x + 25, this.y + 25, '#60a5fa', 10);
+                spawnParticles(this.x + SKATER_SIZE/2, this.y + SKATER_SIZE/2, '#60a5fa', 10);
             }
             
             setFrame(frame) {
                 this.element.src = frame === 0 ? 'img/skater1.png' : 'img/skater2.png';
+            }
+            
+            checkCollisionWithVan(vanX, vanY, vanWidth, vanHeight) {
+                // Controlla se il furgone investe la pattinatrice frontalmente
+                const skaterCenterX = this.x + SKATER_SIZE/2;
+                const skaterCenterY = this.y + SKATER_SIZE/2;
+                const vanFrontX = vanX + vanWidth; // lato destro del furgone (fronte)
+                
+                // Collisione frontale: il furgone va verso destra e colpisce la pattinatrice
+                if (vanFrontX > this.x && vanFrontX < this.x + SKATER_SIZE &&
+                    vanY < this.y + SKATER_SIZE && vanY + vanHeight > this.y) {
+                    return true;
+                }
+                return false;
+            }
+            
+            checkCollection(entity) {
+                // Controlla se la pattinatrice raccoglie un oggetto (come il furgone)
+                if (!this.attached) return false;
+                
+                const skaterX = this.x;
+                const skaterY = this.y;
+                const skaterW = SKATER_SIZE;
+                const skaterH = SKATER_SIZE;
+                
+                const entityX = entity instanceof Dot ? entity.x - entity.radius : entity.x;
+                const entityY = entity instanceof Dot ? entity.y - entity.radius : entity.y;
+                const entityW = entity instanceof Dot ? entity.radius * 2 : entity.width;
+                const entityH = entity instanceof Dot ? entity.radius * 2 : entity.height;
+                
+                return skaterX < entityX + entityW &&
+                       skaterX + skaterW > entityX &&
+                       skaterY < entityY + entityH &&
+                       skaterY + skaterH > entityY;
             }
             
             destroy() {
@@ -626,49 +737,79 @@
         }
         
         function addSkater() {
-            // Il tasto H "incanta" le pattinatrici libere, facendole agganciare
+            // Il tasto H "incanta" le pattinatrici libere, facendole avvicinare
             if (freeSkaters.length === 0) return;
-            if (skaters.length >= MAX_SKATERS) return;
             
             // Suono clacson
             sound.honk();
             
-            // Aggancia tutte le pattinatrici libere (se c'è spazio)
-            while (freeSkaters.length > 0 && skaters.length < MAX_SKATERS) {
-                const skater = freeSkaters.shift();
-                skater.attach(van.x, van.y, van.width, van.height);
-                skaters.push(skater);
+            // Fai avvicinare tutte le pattinatrici libere (non le aggancia automaticamente)
+            freeSkaters.forEach(skater => {
+                skater.approaching = true;
+            });
+        }
+        
+        function tryAttachNearbySkaters() {
+            // Tenta di agganciare le pattinatrici vicine al furgone
+            const attachDistance = 80;
+            const toAttach = [];
+            
+            for (let i = freeSkaters.length - 1; i >= 0; i--) {
+                const skater = freeSkaters[i];
+                const dx = (van.x + van.width/2) - (skater.x + SKATER_SIZE/2);
+                const dy = (van.y + van.height) - (skater.y + SKATER_SIZE/2);
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if (dist < attachDistance && skaters.length + toAttach.length < MAX_SKATERS) {
+                    toAttach.push(skater);
+                    freeSkaters.splice(i, 1);
+                }
             }
+            
+            // Aggancia le pattinatrici in coda
+            toAttach.forEach(skater => {
+                const queueIndex = skaters.length;
+                skater.attachToQueue(queueIndex);
+                skaters.push(skater);
+            });
+        }
+        
+        function getQueuePositions(vanX, vanY, vanWidth, vanHeight) {
+            // Calcola le posizioni della coda dietro al furgone
+            const positions = [];
+            for (let i = 0; i < MAX_SKATERS; i++) {
+                positions.push({
+                    x: vanX + vanWidth/2 - SKATER_SIZE/2 + (i % 2 === 0 ? -25 : 25),
+                    y: vanY + vanHeight + 15 + Math.floor(i / 2) * 50
+                });
+            }
+            return positions;
         }
         
         function spawnFreeSkater() {
             // Spawn casuale ai lati dello schermo (posizioni visibili)
-            const side = Math.floor(Math.random() * 4); // 0: sinistra, 1: destra, 2: basso-sinistra, 3: basso-destra
+            const side = Math.floor(Math.random() * 4);
             let x, y;
             
             if (side === 0) {
-                // Lato sinistro (visibile)
                 x = 10;
-                y = GAME_HEIGHT * 0.6 + Math.random() * GAME_HEIGHT * 0.3;
+                y = GAME_HEIGHT * 0.5 + Math.random() * GAME_HEIGHT * 0.3;
             } else if (side === 1) {
-                // Lato destro (visibile)
-                x = GAME_WIDTH - 60;
-                y = GAME_HEIGHT * 0.6 + Math.random() * GAME_HEIGHT * 0.3;
+                x = GAME_WIDTH - SKATER_SIZE - 10;
+                y = GAME_HEIGHT * 0.5 + Math.random() * GAME_HEIGHT * 0.3;
             } else if (side === 2) {
-                // Basso-sinistra
                 x = 10 + Math.random() * 100;
-                y = GAME_HEIGHT - 80;
+                y = GAME_HEIGHT - SKATER_SIZE - 20;
             } else {
-                // Basso-destra
-                x = GAME_WIDTH - 110 + Math.random() * 100;
-                y = GAME_HEIGHT - 80;
+                x = GAME_WIDTH - SKATER_SIZE - 110 + Math.random() * 100;
+                y = GAME_HEIGHT - SKATER_SIZE - 20;
             }
             
-            const skater = new Skater(x, y, false);
+            const skater = new Skater(x, y);
+            skater.direction = side === 0 || side === 2 ? 1 : -1;
             freeSkaters.push(skater);
             
-            console.log(`🛼 Pattinatrice spawnata! Posizione: (${x.toFixed(0)}, ${y.toFixed(0)}), Lato: ${side}`);
-            console.log(`Pattinatrici libere: ${freeSkaters.length}, Agganciate: ${skaters.length}`);
+            console.log(`🛼 Pattinatrice spawnata! Posizione: (${x.toFixed(0)}, ${y.toFixed(0)})`);
         }
         
         function updateSkaters(dt) {
@@ -676,37 +817,51 @@
             skaterAnimationTimer += dt * 1000;
             if (skaterAnimationTimer >= SKATER_ANIMATION_SPEED) {
                 skaterAnimationTimer = 0;
-                skaterCurrentFrame = 1 - skaterCurrentFrame; // alterna 0 e 1
+                skaterCurrentFrame = 1 - skaterCurrentFrame;
                 
-                // Aggiorna tutte le pattinatrici (libere e agganciate)
                 skaters.forEach(skater => skater.setFrame(skaterCurrentFrame));
                 freeSkaters.forEach(skater => skater.setFrame(skaterCurrentFrame));
             }
             
-            // Aggiorna posizione pattinatrici agganciate
-            skaters.forEach(skater => skater.update(dt, van.x, van.y, van.width, van.height));
+            // Calcola posizioni coda
+            const queuePositions = getQueuePositions(van.x, van.y, van.width, van.height);
             
-            // Aggiorna posizione pattinatrici libere
-            freeSkaters.forEach(skater => skater.update(dt, van.x, van.y, van.width, van.height));
+            // Aggiorna pattinatrici agganciate
+            skaters.forEach(skater => skater.update(dt, van.x, van.y, van.width, van.height, queuePositions));
+            
+            // Aggiorna pattinatrici libere e controlla collisioni frontali
+            for (let i = freeSkaters.length - 1; i >= 0; i--) {
+                const skater = freeSkaters[i];
+                skater.update(dt, van.x, van.y, van.width, van.height, queuePositions);
+                
+                // Controlla se il furgone investe la pattinatrice frontalmente
+                if (skater.checkCollisionWithVan(van.x, van.y, van.width, van.height)) {
+                    // Investita! Suono incidente e rimuovi
+                    sound.crash();
+                    spawnParticles(skater.x + SKATER_SIZE/2, skater.y + SKATER_SIZE/2, '#ff0000', 15);
+                    skater.destroy();
+                    freeSkaters.splice(i, 1);
+                    console.log('💥 Pattinatrice investita!');
+                }
+            }
+            
+            // Tenta di agganciare pattinatrici vicine
+            tryAttachNearbySkaters();
             
             // Aggiorna display conteggio pattinatrici
-            skaterCountDisplay.textContent = freeSkaters.length;
+            skaterCountDisplay.textContent = freeSkaters.length + '/' + skaters.length;
             
             // Spawn casuale incrementale
             skaterSpawnTimer += dt * 1000;
             if (skaterSpawnTimer >= SKATER_SPAWN_INTERVAL) {
                 skaterSpawnTimer = 0;
                 
-                // Tenta di spawnare una pattinatrice
                 const roll = Math.random();
                 if (roll < skaterSpawnChance) {
                     spawnFreeSkater();
-                    // Reset della probabilità dopo lo spawn
                     skaterSpawnChance = 0.05;
                 } else {
-                    // Aumenta la probabilità per il prossimo tentativo
                     skaterSpawnChance += SKATER_SPAWN_INCREMENT;
-                    console.log(`Pattinatrice non spawnata (${(roll * 100).toFixed(1)}% < ${(skaterSpawnChance * 100).toFixed(1)}%)`);
                 }
             }
         }
@@ -856,29 +1011,55 @@
                 // CORREZIONE #2: Effetto lampeggio invincibilità
                 if (isInvincible && !vanVisible) return;
 
+                // Design aerodinamico monovolume
                 ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.beginPath();
+                // Parte posteriore (verticale)
+                ctx.moveTo(this.x, this.y + this.height);
+                ctx.lineTo(this.x, this.y + 5);
+                // Tetto curvo
+                ctx.quadraticCurveTo(this.x, this.y, this.x + 12, this.y);
+                // Linea del tetto
+                ctx.lineTo(this.x + this.width * 0.6, this.y);
+                // Muso inclinato (monovolume)
+                ctx.quadraticCurveTo(this.x + this.width * 0.75, this.y, this.x + this.width * 0.85, this.y + this.height * 0.3);
+                ctx.lineTo(this.x + this.width, this.y + this.height * 0.5);
+                // Parte inferiore del muso
+                ctx.lineTo(this.x + this.width, this.y + this.height);
+                ctx.closePath();
+                ctx.fill();
                 
                 // Striscia rossa
-                const redStripeHeight = this.height / 4;
-                const redStripeY = this.y + this.height * 0.5 - redStripeHeight / 2;
+                const redStripeHeight = this.height / 5;
+                const redStripeY = this.y + this.height * 0.55 - redStripeHeight / 2;
                 ctx.fillStyle = '#ff0000'; 
-                ctx.fillRect(this.x, redStripeY, this.width, redStripeHeight);
+                ctx.beginPath();
+                ctx.moveTo(this.x, redStripeY);
+                ctx.lineTo(this.x + this.width * 0.85, redStripeY);
+                ctx.lineTo(this.x + this.width, redStripeY + redStripeHeight * 0.3);
+                ctx.lineTo(this.x + this.width, redStripeY + redStripeHeight);
+                ctx.lineTo(this.x, redStripeY + redStripeHeight);
+                ctx.closePath();
+                ctx.fill();
                 
-                // Finestrino
+                // Finestrino anteriore (inclinazione monovolume)
                 ctx.fillStyle = '#60a5fa';
-                const windowWidth = this.width / 3;
-                const windowHeight = this.height / 2;
-                ctx.fillRect(this.x + this.width / 2, this.y + 2, windowWidth, windowHeight - 4);
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width * 0.55, this.y + 3);
+                ctx.lineTo(this.x + this.width * 0.75, this.y + 3);
+                ctx.lineTo(this.x + this.width * 0.82, this.y + this.height * 0.35);
+                ctx.lineTo(this.x + this.width * 0.55, this.y + this.height * 0.35);
+                ctx.closePath();
+                ctx.fill();
                 
                 // Ruote
                 ctx.fillStyle = '#000000';
                 const wheelRadius = 8; 
                 ctx.beginPath();
-                ctx.arc(this.x + wheelRadius, this.y + this.height, wheelRadius, 0, Math.PI * 2);
+                ctx.arc(this.x + wheelRadius + 8, this.y + this.height, wheelRadius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(this.x + this.width - wheelRadius, this.y + this.height, wheelRadius, 0, Math.PI * 2);
+                ctx.arc(this.x + this.width - wheelRadius - 8, this.y + this.height, wheelRadius, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Indicatore invincibilità
@@ -932,9 +1113,9 @@
         class Syringe {
             constructor(y) {
                 this.x = GAME_WIDTH;
-                this.width = SYRINGE_WIDTH;
-                this.height = SYRINGE_HEIGHT;
-                this.y = y; 
+                this.width = SYRINGE_WIDTH + 17; // 40 + 12 (ago) + 5 (pistone) = 57px
+                this.height = SYRINGE_HEIGHT + 10; // 10 + 10 = 20px per hitbox più generosa
+                this.y = y - 5; // Centra verticalmente l'hitbox aumentata
                 this.isHit = false;
                 this.isCollected = false; 
             }
@@ -943,41 +1124,41 @@
                 this.x -= diff.dotSpeed * 60 * dt * 1.5; 
             }
             draw() {
-                // Corpo siringa
+                // Corpo siringa (disegnato nella posizione originale)
                 ctx.fillStyle = '#ff0000'; 
-                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.fillRect(this.x + 5, this.y + 5, SYRINGE_WIDTH, SYRINGE_HEIGHT);
                 
                 // Liquido interno
                 ctx.fillStyle = '#ff6666';
-                ctx.fillRect(this.x + 5, this.y + 2, this.width - 15, this.height - 4);
+                ctx.fillRect(this.x + 10, this.y + 7, SYRINGE_WIDTH - 15, SYRINGE_HEIGHT - 4);
                 
                 // Ago
                 ctx.fillStyle = '#cccccc';
                 const needleLength = 12; 
                 const needleOffset = 3;
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.width, this.y + this.height / 2);
-                ctx.lineTo(this.x + this.width + needleLength, this.y + this.height / 2 - needleOffset);
-                ctx.lineTo(this.x + this.width + needleLength, this.y + this.height / 2 + needleOffset);
+                ctx.moveTo(this.x + 5 + SYRINGE_WIDTH, this.y + 5 + SYRINGE_HEIGHT / 2);
+                ctx.lineTo(this.x + 5 + SYRINGE_WIDTH + needleLength, this.y + 5 + SYRINGE_HEIGHT / 2 - needleOffset);
+                ctx.lineTo(this.x + 5 + SYRINGE_WIDTH + needleLength, this.y + 5 + SYRINGE_HEIGHT / 2 + needleOffset);
                 ctx.closePath();
                 ctx.fill();
 
                 // Pistone
                 ctx.fillStyle = '#888888';
-                ctx.fillRect(this.x - 5, this.y + 1, 5, this.height - 2);
+                ctx.fillRect(this.x, this.y + 6, 5, SYRINGE_HEIGHT - 2);
             }
             checkCollision(van) {
                 return van.x < this.x + this.width &&
-                       van.x + this.width > this.x &&
+                       van.x + van.width > this.x &&
                        van.y < this.y + this.height &&
-                       van.y + this.height > this.y;
+                       van.y + van.height > this.y;
             }
         }
 
         class AmmoKit {
             constructor(y) {
-                this.width = 30;
-                this.height = 30;
+                this.width = 25; // Ridotto per scatole più piccole
+                this.height = 25; // Ridotto per scatole più piccole
                 this.x = GAME_WIDTH;
                 this.y = y - this.height / 2; 
                 this.isCollected = false;
@@ -993,10 +1174,13 @@
                 ctx.fillText('📦', this.x + this.width / 2, this.y + this.height / 2); 
             }
             checkCollision(van) {
-                return van.x < this.x + this.width &&
-                       van.x + this.width > this.x &&
+                // Raccolta anche solo dal muso del furgone (lato destro)
+                const vanFrontX = van.x + van.width; // Muso del furgone
+                
+                return vanFrontX > this.x &&
+                       van.x < this.x + this.width &&
                        van.y < this.y + this.height &&
-                       van.y + this.height > this.y;
+                       van.y + van.height > this.y;
             }
         }
         
@@ -1055,15 +1239,23 @@
             const lifeMap = { 3: '👧🏼', 2: '🐺', 1: '🐴' };
             const lostLifeIcon = '💀'; 
             
+            // Mostra le vite in ordine: prima la ragazza (3), poi il lupo (2), poi il cavallo (1)
+            // Se una vita è persa, mostra il teschio al posto del personaggio
             for (let i = LIVES_START; i >= 1; i--) {
-                lifeIcons += (i <= lives) ? (lifeMap[i] || '❤️') : lostLifeIcon; 
+                if (i <= lives) {
+                    // Vita attiva: mostra il personaggio
+                    lifeIcons += lifeMap[i] || '❤️';
+                } else {
+                    // Vita persa: mostra il teschio
+                    lifeIcons += lostLifeIcon;
+                }
             }
             livesDisplay.innerHTML = lifeIcons;
         }
 
         function updateCavalloDisplay() {
             cavalloEnergyDisplay.textContent = cavalloEnergy;
-            const isReadyToHeal = cavalloEnergy >= CAVALLO_MAX_ENERGY && lives < LIVES_START;
+            const isReadyToHeal = cavalloEnergy >= 5 && lives < LIVES_START;
 
             if (isReadyToHeal) {
                 healButton.disabled = false;
@@ -1098,9 +1290,9 @@
         // ============================================================
 
         function healAlly() {
-            if (cavalloEnergy >= CAVALLO_MAX_ENERGY && lives < LIVES_START) {
+            if (cavalloEnergy >= 5 && lives < LIVES_START) {
                 lives++;
-                cavalloEnergy = 0;
+                cavalloEnergy = cavalloEnergy - 5; // Sottrae 5 invece di azzerare
                 updateLivesDisplay();
                 updateCavalloDisplay();
                 
@@ -1166,31 +1358,83 @@
             magicSpray.innerHTML = '';
             magicSpray.style.display = 'block';
             
-            // Crea 30 particelle magiche
-            for (let i = 0; i < 30; i++) {
+            const containerWidth = magicSpray.offsetWidth || 400;
+            const containerHeight = magicSpray.offsetHeight || 300;
+            const targetX = containerWidth / 2;
+            const targetY = containerHeight / 2;
+            
+            // Punto di partenza (pistola in alto a sinistra)
+            const gunX = containerWidth * 0.15;
+            const gunY = containerHeight * 0.1;
+            
+            // Calcola direzione e distanza
+            const angle = Math.atan2(targetY - gunY, targetX - gunX);
+            const distance = Math.sqrt((targetX - gunX) ** 2 + (targetY - gunY) ** 2);
+            
+            // Crea getto continuo di acqua (scia) - PIÙ COMPATTO E GROSSO
+            const streamDuration = 0.8;
+            const particlesPerFrame = 12; // più particelle per frame
+            const totalFrames = 25;
+            
+            for (let frame = 0; frame < totalFrames; frame++) {
+                const frameDelay = (frame / totalFrames) * streamDuration;
+                
+                for (let p = 0; p < particlesPerFrame; p++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'magic-particle water-stream';
+                    
+                    // Punto di partenza molto compatto (meno dispersione)
+                    const startX = gunX + (Math.random() - 0.5) * 2;
+                    const startY = gunY + (Math.random() - 0.5) * 2;
+                    
+                    // Direzione con dispersione minima (getto più compatto)
+                    const spread = (Math.random() - 0.5) * 0.03;
+                    const dx = Math.cos(angle + spread) * distance;
+                    const dy = Math.sin(angle + spread) * distance;
+                    
+                    particle.style.setProperty('--startX', startX + 'px');
+                    particle.style.setProperty('--startY', startY + 'px');
+                    particle.style.setProperty('--dx', dx + 'px');
+                    particle.style.setProperty('--dy', dy + 'px');
+                    
+                    particle.style.animationDelay = (frameDelay + p * 0.003) + 's';
+                    
+                    // Particelle PIÙ GROSSE per getto più visibile
+                    const size = 6 + Math.random() * 4;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    
+                    magicSpray.appendChild(particle);
+                }
+            }
+            
+            // Crea splash/zampillo all'impatto - PIÙ GRANDE E VISIBILE
+            const splashDelay = streamDuration * 0.6;
+            const splashParticles = 50; // più particelle
+            
+            for (let i = 0; i < splashParticles; i++) {
                 const particle = document.createElement('div');
-                particle.className = 'magic-particle';
+                particle.className = 'magic-particle water-splash';
                 
-                // Posizione casuale intorno al centro
-                const angle = (Math.PI * 2 * i) / 30;
-                const distance = 100 + Math.random() * 150;
-                const startX = 50 + Math.cos(angle) * distance;
-                const startY = 50 + Math.sin(angle) * distance;
+                // Punto di impatto più largo
+                const startX = targetX + (Math.random() - 0.5) * 20;
+                const startY = targetY + (Math.random() - 0.5) * 20;
                 
-                particle.style.left = startX + '%';
-                particle.style.top = startY + '%';
+                // Direzione radiale con distanza maggiore (zampilli più evidenti)
+                const splashAngle = (Math.PI * 2 * i) / splashParticles + (Math.random() - 0.5) * 0.3;
+                const splashDistance = 40 + Math.random() * 60; // distanza maggiore
+                const dx = Math.cos(splashAngle) * splashDistance;
+                const dy = Math.sin(splashAngle) * splashDistance;
                 
-                // Direzione verso il centro
-                const tx = (50 - startX) * 2 + 'px';
-                const ty = (50 - startY) * 2 + 'px';
-                particle.style.setProperty('--tx', tx);
-                particle.style.setProperty('--ty', ty);
+                particle.style.setProperty('--startX', startX + 'px');
+                particle.style.setProperty('--startY', startY + 'px');
+                particle.style.setProperty('--dx', dx + 'px');
+                particle.style.setProperty('--dy', dy + 'px');
                 
-                // Delay casuale per effetto spray
-                particle.style.animationDelay = (Math.random() * 0.3) + 's';
+                particle.style.animationDelay = (splashDelay + i * 0.008) + 's';
                 
-                // Dimensione casuale
-                const size = 8 + Math.random() * 12;
+                // Particelle splash PIÙ GROSSE
+                const size = 5 + Math.random() * 6;
                 particle.style.width = size + 'px';
                 particle.style.height = size + 'px';
                 
@@ -1200,6 +1444,22 @@
         
         function shoot() {
             if (!isGameRunning || isPaused) return;
+            
+            const now = performance.now();
+            let shotDelay = 0;
+            
+            // Determina il delay in base al numero di colpi
+            if (shotCount === 0) {
+                shotDelay = 0; // Primo colpo immediato
+            } else if (shotCount === 1) {
+                shotDelay = SECOND_SHOT_DELAY; // Secondo colpo: 250ms
+            } else {
+                shotDelay = FOLLOWING_SHOT_DELAY; // Colpi successivi: 150ms
+            }
+            
+            // Controlla se è passato abbastanza tempo dall'ultimo colpo
+            if (now - lastShotTime < shotDelay) return;
+            
             if (ammunition >= SHOT_COST) {
                 ammunition -= SHOT_COST;
                 bullets.push(new Bullet(van.x, van.y));
@@ -1208,7 +1468,15 @@
                 
                 van.color = '#FFD700'; 
                 setTimeout(() => { if (van) van.color = van.defaultColor; }, 80);
+                
+                shotCount++;
+                lastShotTime = now;
             }
+        }
+        
+        function stopShooting() {
+            isShooting = false;
+            shotCount = 0;
         }
 
         function showTemporaryDeathScreen(imageSet) {
@@ -1318,11 +1586,11 @@
             let entity;
 
             if (isAmmoKit) {
-                entityHeight = 30; 
+                entityHeight = 25; // Ridotto per scatole più piccole
                 const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight; 
                 entity = new AmmoKit(y);
             } else if (isSyringe) {
-                entityHeight = SYRINGE_HEIGHT;
+                entityHeight = 20; // Aggiornato da SYRINGE_HEIGHT (10) a 20
                 const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight; 
                 entity = new Syringe(y);
             } else {
@@ -1434,7 +1702,12 @@
                             spawnParticles(entity.x, entity.y, '#4a90d9', 6);
                         } else if (entity.type === 'pink') { 
                             if (cavalloEnergy < CAVALLO_MAX_ENERGY) {
+                                // Energia non al massimo: aggiungi energia
                                 cavalloEnergy = Math.min(cavalloEnergy + PINK_SHEEP_GAIN, CAVALLO_MAX_ENERGY);
+                            } else {
+                                // Energia al massimo (10): dai 20 punti invece di energia
+                                score += 20;
+                                updateScore();
                             }
                             updateCavalloDisplay();
                             sound.collect();
@@ -1470,12 +1743,67 @@
 
             dots = dots.filter(entity => !entity.isCollected);
 
+            // Collisioni Pattinatrici-Entità (le pattinatrici agganciate raccolgono come il furgone)
+            if (skaters.length > 0) {
+                dots.forEach(entity => {
+                    if (entity.isCollected) return;
+                    
+                    // Controlla se una pattinatrice agganciata raccoglie l'oggetto
+                    for (const skater of skaters) {
+                        if (skater.checkCollection(entity)) {
+                            // La pattinatrice raccoglie l'oggetto (stessi effetti del furgone)
+                            if (entity instanceof AmmoKit) { 
+                                entity.isCollected = true;
+                                ammunition = Math.min(ammunition + AMMO_GAIN, AMMO_MAX);
+                                updateAmmoDisplay();
+                                sound.collect();
+                                spawnParticles(entity.x + entity.width/2, entity.y + entity.height/2, '#FFD700', 8);
+                                break;
+                            } else if (entity instanceof Dot) {
+                                entity.isCollected = true;
+                                
+                                if (entity.type === 'red') {
+                                    score += SCORE_GAIN;
+                                    sound.collect();
+                                    spawnParticles(entity.x, entity.y, '#ff6b6b', 6);
+                                } else if (entity.type === 'pink') { 
+                                    if (cavalloEnergy < CAVALLO_MAX_ENERGY) {
+                                        cavalloEnergy = Math.min(cavalloEnergy + PINK_SHEEP_GAIN, CAVALLO_MAX_ENERGY);
+                                    } else {
+                                        score += 20;
+                                        updateScore();
+                                    }
+                                    updateCavalloDisplay();
+                                    sound.collect();
+                                    spawnParticles(entity.x, entity.y, '#f472b6', 8);
+                                } else if (entity.type === 'blue') {
+                                    // Le pattinatrici NON raccolgono mascherine (le evitano)
+                                    entity.isCollected = false;
+                                    break;
+                                }
+                                
+                                updateScore();
+                                break;
+                            }
+                            // Le pattinatrici NON raccolgono siringhe (le evitano)
+                        }
+                    }
+                });
+                
+                dots = dots.filter(entity => !entity.isCollected);
+            }
+
             // Aggiorna particelle
             particles.forEach(p => p.update(dt));
             particles = particles.filter(p => p.life > 0);
             
             // Aggiorna pattinatrici
             updateSkaters(dt);
+            
+            // Sparo continuo se F è tenuto premuto
+            if (isShooting && !isPaused) {
+                shoot();
+            }
 
             if (lives <= 0) {
                 gameOver();
@@ -1676,6 +2004,7 @@
             }
             
             if (e.key.toUpperCase() === 'F' && isGameRunning && !isPaused) {
+                isShooting = true;
                 shoot();
             }
             
@@ -1695,6 +2024,11 @@
 
         document.addEventListener('keyup', (e) => {
             keys[e.key] = false;
+            
+            // Ferma lo sparo continuo quando F viene rilasciato
+            if (e.key.toUpperCase() === 'F') {
+                stopShooting();
+            }
         });
 
         // Inizializza audio al primo click (requisito browser)
