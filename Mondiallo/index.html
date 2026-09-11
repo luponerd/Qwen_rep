@@ -81,15 +81,75 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-image: url('img/background2.jpg');
+            background-size: cover;
+            background-position: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            background-blend-mode: multiply;
+        }
+
+        #deathCharacterImage {
+            max-width: 60%;
+            max-height: 70%;
+            object-fit: contain;
+            z-index: 16;
+            display: none;
+            filter: drop-shadow(0 0 20px rgba(249, 113, 113, 0.8));
+        }
+
+        #dartImage {
+            position: absolute;
+            width: 80px;
+            height: auto;
+            z-index: 17;
+            display: none;
+            top: 10%;
+            right: 10%;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+        }
+
+        #magicSpray {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 16;
+            display: none;
+            pointer-events: none;
+        }
+
+        .magic-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, #10b981 0%, #34d399 50%, transparent 100%);
+            border-radius: 50%;
+            animation: sprayParticle 1s ease-out forwards;
+        }
+
+        @keyframes sprayParticle {
+            0% {
+                transform: translate(0, 0) scale(0);
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(1.5);
+                opacity: 0;
+            }
         }
 
         .death-text {
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: #f97171;
             text-shadow: 0 0 20px rgba(249, 113, 113, 0.8);
             animation: pulse 0.5s ease-in-out infinite alternate;
+            margin-top: 20px;
+            z-index: 18;
         }
 
         @keyframes pulse {
@@ -174,6 +234,9 @@
             <div id="difficultyBadge" class="difficulty-badge bg-green-500 text-white">Livello 1</div>
             
             <div id="deathImageContainer">
+                <img id="deathCharacterImage" src="" alt="Personaggio di Morte">
+                <img id="dartImage" src="img/dardo.png" alt="Dardo">
+                <div id="magicSpray"></div>
                 <div class="death-text" id="deathText">💉 SEI STATO SIRINGATO!</div>
             </div>
 
@@ -236,10 +299,32 @@
         const ammoDisplay = document.getElementById('ammoDisplay');
         const difficultyBadge = document.getElementById('difficultyBadge');
         const gameSoundtrack = document.getElementById('gameSoundtrack');
+        const deathCharacterImage = document.getElementById('deathCharacterImage');
+        const dartImage = document.getElementById('dartImage');
+        const magicSpray = document.getElementById('magicSpray');
 
         // --- GESTIONE VOLUME MUSICA ---
         const VOLUME_NORMAL = 0.6; 
         const VOLUME_MENU = 0.2;   
+
+        // --- GESTIONE IMMAGINI MORTE E RITARDO ---
+        const BASE_IMAGE_MS = 2000;  
+        const FLASH_IMAGE_MS = 1000; 
+
+        const LIFE_IMAGES = {
+            3: {
+                base: 'img/gbionda.png', 
+                flash: 'img/gbionda2.png'
+            },
+            2: {
+                base: 'img/lupo.png', 
+                flash: 'img/lupo2.png'
+            },
+            1: {
+                base: 'img/game_over.jpg', 
+                flash: 'img/game_over.jpg'
+            }
+        };
 
         // ============================================================
         // CORREZIONE #4: Effetti sonori con Web Audio API
@@ -796,10 +881,97 @@
                 updateLivesDisplay();
                 updateCavalloDisplay();
                 
-                van.color = '#10b981';
-                setTimeout(() => { if (van) van.color = van.defaultColor; }, 200);
+                // Metti in pausa il gioco durante l'animazione
+                isPaused = true;
+                keys = {};
+                
+                // Abbassa volume musica
+                gameSoundtrack.volume = VOLUME_MENU;
+                
+                // Determina quale immagine usare (la vita appena recuperata)
+                const healImage = LIFE_IMAGES[lives];
+                
+                // Mostra il container
+                deathImageContainer.style.display = 'flex';
+                messageScreen.style.display = 'none';
+                
+                // FASE 1: Mostra il personaggio nella versione "colpita" (flash)
+                deathCharacterImage.src = healImage.flash;
+                deathCharacterImage.style.display = 'block';
+                deathText.textContent = '✨ CURA MAGICA! ✨';
+                deathText.style.display = 'block';
+                
                 sound.heal();
-                spawnParticles(van.x + VAN_WIDTH/2, van.y + VAN_HEIGHT/2, '#10b981', 12);
+                
+                // Dopo 1 secondo: spruzzata magica
+                setTimeout(() => {
+                    createMagicSpray();
+                    
+                    // Dopo 0.5 secondi: trasformazione in versione sana
+                    setTimeout(() => {
+                        deathCharacterImage.src = healImage.base;
+                        
+                        // Dopo 1.5 secondi: fine animazione
+                        setTimeout(() => {
+                            deathImageContainer.style.display = 'none';
+                            deathCharacterImage.style.display = 'none';
+                            magicSpray.style.display = 'none';
+                            magicSpray.innerHTML = '';
+                            deathText.style.display = 'none';
+                            
+                            // Ripristina volume musica
+                            gameSoundtrack.volume = VOLUME_NORMAL;
+                            
+                            // Cambia colore van temporaneamente
+                            van.color = '#10b981';
+                            setTimeout(() => { if (van) van.color = van.defaultColor; }, 300);
+                            
+                            // Particelle sul van
+                            spawnParticles(van.x + VAN_WIDTH/2, van.y + VAN_HEIGHT/2, '#10b981', 15);
+                            
+                            // Riprendi il gioco
+                            isPaused = false;
+                            lastUpdateTime = performance.now();
+                            requestAnimationFrame(gameLoop);
+                        }, 1500);
+                    }, 500);
+                }, 1000);
+            }
+        }
+        
+        function createMagicSpray() {
+            magicSpray.innerHTML = '';
+            magicSpray.style.display = 'block';
+            
+            // Crea 30 particelle magiche
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'magic-particle';
+                
+                // Posizione casuale intorno al centro
+                const angle = (Math.PI * 2 * i) / 30;
+                const distance = 100 + Math.random() * 150;
+                const startX = 50 + Math.cos(angle) * distance;
+                const startY = 50 + Math.sin(angle) * distance;
+                
+                particle.style.left = startX + '%';
+                particle.style.top = startY + '%';
+                
+                // Direzione verso il centro
+                const tx = (50 - startX) * 2 + 'px';
+                const ty = (50 - startY) * 2 + 'px';
+                particle.style.setProperty('--tx', tx);
+                particle.style.setProperty('--ty', ty);
+                
+                // Delay casuale per effetto spray
+                particle.style.animationDelay = (Math.random() * 0.3) + 's';
+                
+                // Dimensione casuale
+                const size = 8 + Math.random() * 12;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                magicSpray.appendChild(particle);
             }
         }
         
@@ -816,25 +988,58 @@
             }
         }
 
-        function showTemporaryDeathScreen() {
+        function showTemporaryDeathScreen(imageSet) {
             messageScreen.style.display = 'none';
             deathImageContainer.style.display = 'flex';
+            
+            // Mostra immagine personaggio
+            deathCharacterImage.src = imageSet.base;
+            deathCharacterImage.style.display = 'block';
+            
             isPaused = true;
             sound.hit();
+            
+            // Abbassa volume musica
+            gameSoundtrack.volume = VOLUME_MENU;
+            
+            // Reset posizione dardo
+            dartImage.style.transition = 'none';
+            dartImage.style.transform = 'translate(0, 0) rotate(10deg)';
+            dartImage.style.display = 'block';
+            
+            // Forza reflow per riavviare l'animazione
+            void dartImage.offsetWidth;
+            
+            // Anima il dardo verso il personaggio
+            dartImage.style.transition = `transform ${BASE_IMAGE_MS}ms linear`;
+            dartImage.style.transform = 'translate(-280px, 260px) rotate(15deg)';
 
+            // FASE 1: Immagine BASE (2 secondi) - il dardo si muove
             setTimeout(() => {
-                deathImageContainer.style.display = 'none';
+                // FASE 2: Passa all'immagine FLASH (1 secondo) - effetto impatto
+                deathCharacterImage.src = imageSet.flash;
                 
-                // CORREZIONE #2: Attiva invincibilità
-                isInvincible = true;
-                invincibleTimer = INVINCIBILITY_DURATION;
-                invincibleFlashTimer = 0;
-                vanVisible = true;
-                
-                isPaused = false;
-                lastUpdateTime = performance.now();
-                requestAnimationFrame(gameLoop);
-            }, DEATH_SCREEN_MS); 
+                setTimeout(() => {
+                    // Fine animazione: nascondi tutto e riprendi il gioco
+                    keys = {};
+                    deathImageContainer.style.display = 'none';
+                    deathCharacterImage.style.display = 'none';
+                    dartImage.style.display = 'none';
+
+                    // Ripristina volume musica
+                    gameSoundtrack.volume = VOLUME_NORMAL;
+                    
+                    // CORREZIONE #2: Attiva invincibilità
+                    isInvincible = true;
+                    invincibleTimer = INVINCIBILITY_DURATION;
+                    invincibleFlashTimer = 0;
+                    vanVisible = true;
+                    
+                    isPaused = false;
+                    lastUpdateTime = performance.now();
+                    requestAnimationFrame(gameLoop);
+                }, FLASH_IMAGE_MS); 
+            }, BASE_IMAGE_MS); 
         }
 
         // ============================================================
@@ -870,7 +1075,10 @@
             van = new Van(50, startY);
             
             messageScreen.style.display = 'none'; 
+            messageScreen.style.backgroundImage = 'none';
             deathImageContainer.style.display = 'none'; 
+            deathCharacterImage.style.display = 'none';
+            dartImage.style.display = 'none';
         }
 
         function spawnDotOrSyringe() {
@@ -1027,7 +1235,7 @@
                         isPaused = true;
                         
                         if (lives >= 1) {
-                            showTemporaryDeathScreen();
+                            showTemporaryDeathScreen(LIFE_IMAGES[lifeLost]);
                         }
                     }
                 }
@@ -1164,7 +1372,12 @@
                 // Abbassa volume musica in pausa
                 gameSoundtrack.volume = VOLUME_MENU;
                 
-                messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; 
+                // Sfondo wallpaper per la pausa
+                messageScreen.style.backgroundImage = "url('img/wallpaper.png')";
+                messageScreen.style.backgroundSize = 'cover';
+                messageScreen.style.backgroundPosition = 'center';
+                messageScreen.style.backgroundBlendMode = 'multiply';
+                messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.35)'; 
                 
                 messageTitle.textContent = "⏸️ GIOCO IN PAUSA";
                 messageText.textContent = "Premi ESC per riprendere.";
@@ -1191,9 +1404,17 @@
             
             van.color = '#4a5568'; 
             
+            // Nascondi animazione morte
             deathImageContainer.style.display = 'none';
+            deathCharacterImage.style.display = 'none';
+            dartImage.style.display = 'none';
 
-            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'; 
+            // Usa immagine game_over come sfondo del message screen
+            messageScreen.style.backgroundImage = `url('${LIFE_IMAGES[1].base}')`;
+            messageScreen.style.backgroundSize = 'cover';
+            messageScreen.style.backgroundPosition = 'center';
+            messageScreen.style.backgroundBlendMode = 'multiply';
+            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.5)'; 
             
             messageTitle.textContent = "💀 GAME OVER!";
             
@@ -1264,7 +1485,12 @@
                 console.log('Audio autoplay bloccato dal browser');
             });
             
-            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; 
+            // Sfondo wallpaper per il menu iniziale
+            messageScreen.style.backgroundImage = "url('img/wallpaper.png')";
+            messageScreen.style.backgroundSize = 'cover';
+            messageScreen.style.backgroundPosition = 'center';
+            messageScreen.style.backgroundBlendMode = 'multiply';
+            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.35)'; 
             messageScreen.style.display = 'flex'; 
             messageTitle.style.display = 'block';
             messageText.style.display = 'block';
