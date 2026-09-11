@@ -1,159 +1,1243 @@
+
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ordine Mondiallo - Download</title>
+    <title>Ordine Mondiallo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-            min-height: 100vh;
+            background-color: #1a202c; 
+            color: #e2e8f0;
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: 100vh;
             margin: 0;
             padding: 20px;
         }
-        .download-box {
-            background: #2d3748;
-            border: 3px solid #f97171;
-            border-radius: 16px;
-            padding: 40px;
-            max-width: 700px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 0 40px rgba(249, 113, 113, 0.4);
-        }
-        .download-btn {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            font-weight: bold;
-            padding: 16px 40px;
+
+        .game-container {
+            border: 4px solid #f97171; 
+            box-shadow: 0 0 30px rgba(249, 113, 113, 0.6);
             border-radius: 12px;
-            font-size: 1.25rem;
-            border: none;
-            cursor: pointer;
-            display: inline-block;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1000px; 
         }
-        .download-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 9; 
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
-        .play-btn {
-            background: linear-gradient(135deg, #f97171 0%, #ee5a6f 100%);
-            box-shadow: 0 4px 15px rgba(249, 113, 113, 0.4);
-        }
-        .play-btn:hover {
-            box-shadow: 0 6px 20px rgba(249, 113, 113, 0.6);
-        }
-        .step {
-            text-align: left;
-            background: #1a202c;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin: 8px 0;
-            border-left: 3px solid #f97171;
-        }
-        .step-number {
-            background: #f97171;
-            color: white;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: inline-flex;
+
+        .stats-bar {
+            background-color: #2d3748;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: bold;
-            margin-right: 8px;
+            border-top: 1px solid #4a5568;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
-        .success-msg {
+
+        .game-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: multiply; 
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+        }
+
+        #deathImageContainer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 15; 
             display: none;
-            background: #10b981;
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 16px;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .death-text {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #f97171;
+            text-shadow: 0 0 20px rgba(249, 113, 113, 0.8);
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 0.8; }
+            to { transform: scale(1.1); opacity: 1; }
+        }
+
+        .message-content {
+            z-index: 18;
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-message button {
+            transition: all 0.3s ease;
+        }
+
+        .game-message button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(249, 113, 113, 0.5);
+        }
+
+        .invincible-flash {
+            animation: flash 0.15s linear infinite alternate;
+        }
+
+        @keyframes flash {
+            from { opacity: 1; }
+            to { opacity: 0.4; }
+        }
+
+        .difficulty-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 5;
+            padding: 4px 12px;
+            border-radius: 9999px;
             font-weight: bold;
+            font-size: 0.75rem;
+            text-transform: uppercase;
         }
     </style>
 </head>
 <body>
-    <div class="download-box">
-        <h1 class="text-4xl font-bold text-red-400 mb-2">🎮 Ordine Mondiallo</h1>
-        <p class="text-lg text-gray-300 mb-6">Versione aggiornata con nuovi punteggi!</p>
 
-        <div class="mb-6">
-            <button onclick="downloadGame()" class="download-btn">
-                ⬇️ Scarica index.html
-            </button>
-            <div id="successMsg" class="success-msg">
-                ✅ File scaricato! Ora caricalo su GitHub.
-            </div>
+    <div class="game-container">
+        <div class="stats-bar">
+            <h1 class="text-2xl font-extrabold text-red-400">🎮 Ordine Mondiallo</h1>
+            <span class="text-lg font-bold">Punti: <span id="scoreDisplay">0</span></span>
+            <span class="text-lg font-bold text-red-400">Vite: <span id="livesDisplay">3</span></span>
+            
+            <span class="text-lg font-bold text-pink-400 flex items-center">
+                🐴 <span id="cavalloEnergyDisplay">0</span>/5 
+                <button 
+                    id="healButton" 
+                    class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-1 px-3 rounded-md text-sm ml-2 disabled:opacity-50 transition duration-300"
+                    disabled 
+                    onclick="healAlly()">
+                    <span class="font-extrabold">S</span>pruzzo
+                </button>
+            </span>
+
+            <span class="text-lg font-bold text-yellow-400 flex items-center">
+                🔫 <span id="ammoDisplay">0</span>/100
+            </span>
+
+            <span class="text-lg font-bold text-green-400">
+                🏆 Max: <span id="highScoreDisplay">0</span>
+            </span>
+
+            <span class="text-sm font-bold text-gray-400">FPS: <span id="fpsDisplay">60</span></span>
         </div>
 
-        <div class="mb-6">
-            <h2 class="text-lg font-bold text-yellow-400 mb-3">📋 Come caricare su GitHub:</h2>
-            <div class="step">
-                <span class="step-number">1</span>
-                Clicca il pulsante verde qui sopra per scaricare il file
+        <div class="relative">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="difficultyBadge" class="difficulty-badge bg-green-500 text-white">Livello 1</div>
+            
+            <div id="deathImageContainer">
+                <div class="death-text" id="deathText">💉 SEI STATO SIRINGATO!</div>
             </div>
-            <div class="step">
-                <span class="step-number">2</span>
-                Vai su <a href="https://github.com/luponerd/Qwen_rep/blob/main/Mondiallo/index.html" target="_blank" class="text-blue-400 underline">GitHub → Mondiallo → index.html</a>
-            </div>
-            <div class="step">
-                <span class="step-number">3</span>
-                Clicca l'icona matita ✏️ (in alto a destra del file)
-            </div>
-            <div class="step">
-                <span class="step-number">4</span>
-                Seleziona tutto (<kbd class="bg-gray-700 px-1 rounded">Ctrl+A</kbd>) e cancella
-            </div>
-            <div class="step">
-                <span class="step-number">5</span>
-                Apri il file scaricato, copia tutto (<kbd class="bg-gray-700 px-1 rounded">Ctrl+A</kbd> → <kbd class="bg-gray-700 px-1 rounded">Ctrl+C</kbd>)
-            </div>
-            <div class="step">
-                <span class="step-number">6</span>
-                Incolla su GitHub (<kbd class="bg-gray-700 px-1 rounded">Ctrl+V</kbd>) e clicca <strong>Commit changes</strong>
-            </div>
-        </div>
 
-        <div class="pt-4 border-t border-gray-600">
-            <a href="game.html" class="play-btn download-btn">
-                🎮 Oppure gioca subito qui
-            </a>
+            <div id="messageScreen" class="game-message">
+                <div class="message-content">
+                    <h1 id="messageTitle" class="text-5xl font-extrabold mb-4 text-red-400">Pronto a Partire?</h1>
+                    <p id="messageText" class="text-xl mb-8 max-w-lg">
+                        Raccogli le pecore <span class="text-red-300">🐑</span> (+10) e schiva le mascherine <span class="text-blue-300">😷</span> (-50) e le siringhe <span class="text-red-300">💉</span> (perdi una vita)!<br><br>
+                        <span class="text-yellow-300">💥 Spara alle mascherine: +30 punti</span><br>
+                        <span class="text-red-300">💥 Spara alle siringhe: +100 punti</span><br><br>
+                        <span class="font-bold text-yellow-300">F</span> = Spara &nbsp;|&nbsp; 
+                        <span class="font-bold text-pink-300">S</span> = Cura &nbsp;|&nbsp; 
+                        <span class="font-bold text-gray-300">ESC</span> = Pausa
+                    </p>
+                    <button 
+                        id="startButton" 
+                        class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 text-xl"
+                        onclick="startGame()">
+                        🎮 Inizia Gioco
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        async function downloadGame() {
-            try {
-                const response = await fetch('game.html');
-                const text = await response.text();
+        // ============================================================
+        // CORREZIONE #5: Canvas DPI-aware per schermi HiDPI/Retina
+        // ============================================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 450;
+        
+        // Imposta il canvas per alta risoluzione
+        canvas.width = GAME_WIDTH * dpr;
+        canvas.height = GAME_HEIGHT * dpr;
+        ctx.scale(dpr, dpr);
 
-                const blob = new Blob([text], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
+        // Elementi DOM
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const livesDisplay = document.getElementById('livesDisplay'); 
+        const fpsDisplay = document.getElementById('fpsDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const messageScreen = document.getElementById('messageScreen'); 
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+        const startButton = document.getElementById('startButton');
+        const deathImageContainer = document.getElementById('deathImageContainer'); 
+        const deathText = document.getElementById('deathText');
+        const cavalloEnergyDisplay = document.getElementById('cavalloEnergyDisplay');
+        const healButton = document.getElementById('healButton');
+        const ammoDisplay = document.getElementById('ammoDisplay');
+        const difficultyBadge = document.getElementById('difficultyBadge');
 
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'index.html';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+        // ============================================================
+        // CORREZIONE #4: Effetti sonori con Web Audio API
+        // ============================================================
+        class SoundManager {
+            constructor() {
+                this.audioCtx = null;
+                this.initialized = false;
+            }
 
-                document.getElementById('successMsg').style.display = 'block';
-            } catch (error) {
-                alert('Errore nel download. Prova ad aprire game.html e salvarlo manualmente con Ctrl+S.');
+            init() {
+                if (this.initialized) return;
+                try {
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.initialized = true;
+                } catch(e) {
+                    console.warn('Web Audio API non supportata');
+                }
+            }
+
+            playTone(frequency, duration, type = 'square', volume = 0.15) {
+                if (!this.audioCtx) return;
+                const osc = this.audioCtx.createOscillator();
+                const gain = this.audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(this.audioCtx.destination);
+                osc.type = type;
+                osc.frequency.setValueAtTime(frequency, this.audioCtx.currentTime);
+                gain.gain.setValueAtTime(volume, this.audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+                osc.start(this.audioCtx.currentTime);
+                osc.stop(this.audioCtx.currentTime + duration);
+            }
+
+            shoot() { this.playTone(800, 0.08, 'square', 0.1); }
+            
+            collect() { this.playTone(523, 0.1, 'sine', 0.12); }
+            
+            hit() { 
+                this.playTone(200, 0.2, 'sawtooth', 0.15);
+                setTimeout(() => this.playTone(150, 0.3, 'sawtooth', 0.1), 100);
+            }
+
+            heal() {
+                this.playTone(440, 0.1, 'sine', 0.1);
+                setTimeout(() => this.playTone(660, 0.1, 'sine', 0.1), 100);
+                setTimeout(() => this.playTone(880, 0.15, 'sine', 0.1), 200);
+            }
+
+            gameOver() {
+                this.playTone(440, 0.3, 'sawtooth', 0.15);
+                setTimeout(() => this.playTone(330, 0.3, 'sawtooth', 0.12), 300);
+                setTimeout(() => this.playTone(220, 0.5, 'sawtooth', 0.1), 600);
+            }
+
+            levelUp() {
+                this.playTone(523, 0.1, 'sine', 0.12);
+                setTimeout(() => this.playTone(659, 0.1, 'sine', 0.12), 100);
+                setTimeout(() => this.playTone(784, 0.1, 'sine', 0.12), 200);
+                setTimeout(() => this.playTone(1047, 0.2, 'sine', 0.12), 300);
             }
         }
+
+        const sound = new SoundManager();
+
+        // ============================================================
+        // CORREZIONE #1: Delta time per velocità indipendente dal framerate
+        // ============================================================
+        const TARGET_FPS = 60;
+        const TARGET_FRAME_TIME = 1000 / TARGET_FPS;
+
+        // ============================================================
+        // CORREZIONE #3: Difficoltà progressiva
+        // ============================================================
+        const DIFFICULTY_LEVELS = [
+            { name: 'Facile', color: 'bg-green-500', dotSpeed: 2.5, spawnInterval: 120, syringeChance: 0.10, time: 0 },
+            { name: 'Normale', color: 'bg-yellow-500', dotSpeed: 3.5, spawnInterval: 90, syringeChance: 0.15, time: 30 },
+            { name: 'Difficile', color: 'bg-orange-500', dotSpeed: 4.5, spawnInterval: 70, syringeChance: 0.20, time: 60 },
+            { name: 'Estremo', color: 'bg-red-500', dotSpeed: 5.5, spawnInterval: 50, syringeChance: 0.25, time: 120 },
+            { name: 'IMPOSSIBILE', color: 'bg-purple-600', dotSpeed: 7, spawnInterval: 35, syringeChance: 0.30, time: 180 },
+        ];
+
+        let currentDifficulty = 0;
+        let gameTime = 0; // secondi di gioco
+
+        function updateDifficulty() {
+            let newLevel = 0;
+            for (let i = DIFFICULTY_LEVELS.length - 1; i >= 0; i--) {
+                if (gameTime >= DIFFICULTY_LEVELS[i].time) {
+                    newLevel = i;
+                    break;
+                }
+            }
+            if (newLevel !== currentDifficulty) {
+                currentDifficulty = newLevel;
+                const level = DIFFICULTY_LEVELS[currentDifficulty];
+                difficultyBadge.textContent = `Livello ${currentDifficulty + 1} - ${level.name}`;
+                difficultyBadge.className = `difficulty-badge ${level.color} text-white`;
+                sound.levelUp();
+            }
+        }
+
+        function getDifficulty() {
+            return DIFFICULTY_LEVELS[currentDifficulty];
+        }
+
+        // ============================================================
+        // COSTANTI DI GIOCO
+        // ============================================================
+        const VAN_WIDTH = 80;
+        const VAN_HEIGHT = 40;
+        const VAN_SPEED = 300; // pixel al secondo (non per frame!)
+        const DOT_EMOJI_SIZE = 28; 
+        const SYRINGE_WIDTH = 40; 
+        const SYRINGE_HEIGHT = 10; 
+        const SCORE_GAIN = 10;
+        const SCORE_LOSS = 50;
+        
+        // CORREZIONE #2: Invincibilità temporanea
+        const INVINCIBILITY_DURATION = 2500; // ms
+        const INVINCIBILITY_FLASH_RATE = 150; // ms
+
+        // Cavallo
+        const CAVALLO_MAX_ENERGY = 5;
+        const PINK_SHEEP_CHANCE = 0.20; 
+        const PINK_SHEEP_GAIN = 1;
+        
+        // Munizioni
+        const AMMO_MAX = 100;
+        const AMMO_GAIN = 10;
+        const AMMO_CHANCE = 0.20;
+        const SHOT_COST = 1;
+        const BULLET_SPEED = 600; // pixel al secondo
+        const BULLET_WIDTH = 10;
+        const BULLET_HEIGHT = 3;
+
+        // Morte temporanea
+        const DEATH_SCREEN_MS = 2000;
+
+        const LIVES_START = 3;
+
+        // ============================================================
+        // STATO DEL GIOCO
+        // ============================================================
+        let score = 0;
+        let lives = LIVES_START; 
+        let cavalloEnergy = 0; 
+        let ammunition = 0; 
+        let bullets = []; 
+        let particles = [];
+        let isGameRunning = false;
+        let isPaused = false; 
+        let van;
+        let dots = []; 
+        let keys = {};
+        let frameCount = 0;
+        let lastUpdateTime = performance.now();
+        let spawnTimer = 0;
+        let gameStartTime = 0;
+
+        // CORREZIONE #2: Stato invincibilità
+        let isInvincible = false;
+        let invincibleTimer = 0;
+        let invincibleFlashTimer = 0;
+        let vanVisible = true;
+
+        // CORREZIONE #6: High score con localStorage
+        let highScore = parseInt(localStorage.getItem('mondiallo_highscore') || '0');
+        highScoreDisplay.textContent = highScore;
+
+        // CORREZIONE #7: FPS counter stabilizzato
+        let fpsSamples = [];
+        let displayFps = 60;
+
+        // ============================================================
+        // SISTEMA PARTICELLE (feedback visivo)
+        // ============================================================
+        class Particle {
+            constructor(x, y, color, velocityX, velocityY, life = 500) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.vx = velocityX;
+                this.vy = velocityY;
+                this.life = life;
+                this.maxLife = life;
+                this.size = 3 + Math.random() * 4;
+            }
+
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.vy += 200 * dt; // gravità
+                this.life -= dt * 1000;
+            }
+
+            draw() {
+                const alpha = Math.max(0, this.life / this.maxLife);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.size/2, this.y - this.size/2, this.size, this.size);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function spawnParticles(x, y, color, count = 8) {
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
+                const speed = 100 + Math.random() * 200;
+                particles.push(new Particle(
+                    x, y, color,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed - 100,
+                    400 + Math.random() * 300
+                ));
+            }
+        }
+
+        // ============================================================
+        // FUNZIONE GRAFICA PECORA ROSA
+        // ============================================================
+        function drawPinkSheep(context, x, y, size) {
+            const halfSize = size / 2;
+            const bodyRadiusY = halfSize * 0.49 - 5; 
+            const bodyRadiusX = halfSize * 0.9; 
+
+            context.fillStyle = '#f472b6'; 
+            context.beginPath();
+            context.ellipse(x, y, bodyRadiusX, bodyRadiusY, 0, 0, Math.PI * 2);
+            context.closePath();
+            context.fill();
+            
+            context.beginPath();
+            const numSegments = 12;
+            const arcSize = (Math.PI * 2) / numSegments;
+            const fluffRadius = halfSize * 0.35;
+            for (let i = 0; i < numSegments; i++) {
+                const angle = i * arcSize;
+                const centerX = x + (bodyRadiusX + fluffRadius * 0.5) * Math.sin(angle);
+                const centerY = y - (bodyRadiusY + fluffRadius * 0.5) * Math.cos(angle); 
+                context.arc(centerX, centerY, fluffRadius, angle + Math.PI * 0.2, angle + Math.PI * 1.8, false);
+            }
+            context.fillStyle = '#f472b6';
+            context.fill();
+
+            const headX = x + halfSize * 1.3; 
+            const headY = (y - halfSize * 0.2) - 8; 
+            const headSize = halfSize * 0.4;
+
+            context.fillStyle = '#800080'; 
+            context.beginPath();
+            context.arc(headX, headY, headSize, 0, Math.PI * 2); 
+            context.fill();
+
+            context.fillStyle = '#000000'; 
+            context.beginPath();
+            const ear1X = headX - headSize * 0.5;
+            const ear1Y = headY - headSize * 1.2;
+            context.moveTo(ear1X, ear1Y);
+            context.lineTo(ear1X + headSize * 0.3, ear1Y + headSize * 0.6);
+            context.lineTo(ear1X - headSize * 0.3, ear1Y + headSize * 0.6);
+            context.closePath();
+            context.fill();
+            
+            context.fillStyle = '#000000'; 
+            const eyeSize = headSize * 0.15;
+            context.beginPath();
+            context.arc(headX + 3, headY - headSize * 0.1, eyeSize, 0, Math.PI * 2);
+            context.fill();
+            
+            context.fillStyle = '#000000'; 
+            const legWidth = halfSize * 0.3;
+            const legHeight = halfSize * 0.6; 
+            const legY = (y + bodyRadiusY - 2) + 8; 
+
+            context.fillRect(x - halfSize * 0.7 - 2, legY, legWidth, legHeight);
+            context.fillRect(x + halfSize * 0.4 + 2, legY, legWidth, legHeight);
+        }
+
+        // ============================================================
+        // CLASSI DEL GIOCO
+        // ============================================================
+        
+        class Van {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = VAN_WIDTH;
+                this.height = VAN_HEIGHT;
+                this.color = '#ffffff'; 
+                this.defaultColor = '#ffffff';
+            }
+            update(dt) {
+                // CORREZIONE #1: Movimento basato su delta time
+                const speed = VAN_SPEED * dt;
+                if (keys['ArrowUp'] && this.y > 0) this.y -= speed;
+                if (keys['ArrowDown'] && this.y < GAME_HEIGHT - this.height) this.y += speed;
+                if (keys['ArrowLeft'] && this.x > 0) this.x -= speed;
+                if (keys['ArrowRight'] && this.x < GAME_WIDTH - this.width) this.x += speed;
+                
+                // Clamp
+                this.x = Math.max(0, Math.min(GAME_WIDTH - this.width, this.x));
+                this.y = Math.max(0, Math.min(GAME_HEIGHT - this.height, this.y));
+            }
+            draw() {
+                // CORREZIONE #2: Effetto lampeggio invincibilità
+                if (isInvincible && !vanVisible) return;
+
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Striscia rossa
+                const redStripeHeight = this.height / 4;
+                const redStripeY = this.y + this.height * 0.5 - redStripeHeight / 2;
+                ctx.fillStyle = '#ff0000'; 
+                ctx.fillRect(this.x, redStripeY, this.width, redStripeHeight);
+                
+                // Finestrino
+                ctx.fillStyle = '#60a5fa';
+                const windowWidth = this.width / 3;
+                const windowHeight = this.height / 2;
+                ctx.fillRect(this.x + this.width / 2, this.y + 2, windowWidth, windowHeight - 4);
+                
+                // Ruote
+                ctx.fillStyle = '#000000';
+                const wheelRadius = 8; 
+                ctx.beginPath();
+                ctx.arc(this.x + wheelRadius, this.y + this.height, wheelRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x + this.width - wheelRadius, this.y + this.height, wheelRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Indicatore invincibilità
+                if (isInvincible) {
+                    ctx.strokeStyle = '#FFD700';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeRect(this.x - 3, this.y - 3, this.width + 6, this.height + 6);
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        class Dot {
+            constructor(y, type) {
+                this.x = GAME_WIDTH; 
+                this.y = y; 
+                this.type = type;
+                this.emoji = type === 'red' ? '🐑' : '😷'; 
+                this.radius = DOT_EMOJI_SIZE / 2; 
+                this.isCollected = false;
+                this.isHit = false; 
+            }
+            
+            update(dt) { 
+                // CORREZIONE #1 e #3: Velocità basata su delta time e difficoltà
+                const diff = getDifficulty();
+                this.x -= diff.dotSpeed * 60 * dt; 
+            }
+            
+            draw() {
+                if (this.type === 'pink') {
+                    drawPinkSheep(ctx, this.x, this.y, DOT_EMOJI_SIZE); 
+                } else {
+                    ctx.font = `${DOT_EMOJI_SIZE}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(this.emoji, this.x, this.y);
+                }
+            }
+            checkCollision(van) {
+                const closestX = Math.max(van.x, Math.min(this.x, van.x + van.width));
+                const closestY = Math.max(van.y, Math.min(this.y, van.y + van.height));
+                const distanceX = this.x - closestX;
+                const distanceY = this.y - closestY;
+                const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+                return distanceSquared < (this.radius * this.radius);
+            }
+        }
+
+        class Syringe {
+            constructor(y) {
+                this.x = GAME_WIDTH;
+                this.width = SYRINGE_WIDTH;
+                this.height = SYRINGE_HEIGHT;
+                this.y = y; 
+                this.isHit = false;
+                this.isCollected = false; 
+            }
+            update(dt) { 
+                const diff = getDifficulty();
+                this.x -= diff.dotSpeed * 60 * dt * 1.5; 
+            }
+            draw() {
+                // Corpo siringa
+                ctx.fillStyle = '#ff0000'; 
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Liquido interno
+                ctx.fillStyle = '#ff6666';
+                ctx.fillRect(this.x + 5, this.y + 2, this.width - 15, this.height - 4);
+                
+                // Ago
+                ctx.fillStyle = '#cccccc';
+                const needleLength = 12; 
+                const needleOffset = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width, this.y + this.height / 2);
+                ctx.lineTo(this.x + this.width + needleLength, this.y + this.height / 2 - needleOffset);
+                ctx.lineTo(this.x + this.width + needleLength, this.y + this.height / 2 + needleOffset);
+                ctx.closePath();
+                ctx.fill();
+
+                // Pistone
+                ctx.fillStyle = '#888888';
+                ctx.fillRect(this.x - 5, this.y + 1, 5, this.height - 2);
+            }
+            checkCollision(van) {
+                return van.x < this.x + this.width &&
+                       van.x + this.width > this.x &&
+                       van.y < this.y + this.height &&
+                       van.y + this.height > this.y;
+            }
+        }
+
+        class AmmoKit {
+            constructor(y) {
+                this.width = 30;
+                this.height = 30;
+                this.x = GAME_WIDTH;
+                this.y = y - this.height / 2; 
+                this.isCollected = false;
+            }
+            update(dt) { 
+                const diff = getDifficulty();
+                this.x -= diff.dotSpeed * 60 * dt; 
+            }
+            draw() {
+                ctx.font = `${this.height}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('📦', this.x + this.width / 2, this.y + this.height / 2); 
+            }
+            checkCollision(van) {
+                return van.x < this.x + this.width &&
+                       van.x + this.width > this.x &&
+                       van.y < this.y + this.height &&
+                       van.y + this.height > this.y;
+            }
+        }
+        
+        class Bullet {
+            constructor(x, y) {
+                this.x = x + VAN_WIDTH; 
+                this.y = y + VAN_HEIGHT / 2;
+                this.width = BULLET_WIDTH;
+                this.height = BULLET_HEIGHT;
+                this.isHit = false;
+                this.trail = [];
+            }
+            update(dt) {
+                // CORREZIONE #1: Velocità basata su delta time
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 5) this.trail.shift();
+                this.x += BULLET_SPEED * dt;
+            }
+            draw() {
+                // Scia
+                for (let i = 0; i < this.trail.length; i++) {
+                    const alpha = i / this.trail.length * 0.5;
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillRect(this.trail[i].x, this.trail[i].y - this.height / 2, this.width * 0.6, this.height);
+                }
+                ctx.globalAlpha = 1;
+                
+                // Proiettile
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(this.x, this.y - this.height / 2, this.width, this.height);
+                
+                // Luce
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(this.x + this.width - 2, this.y - this.height / 4, 2, this.height / 2);
+            }
+            checkCollision(entity) {
+                const entityX = entity instanceof Dot ? entity.x - entity.radius : entity.x;
+                const entityY = entity instanceof Dot ? entity.y - entity.radius : entity.y;
+                const entityWidth = entity instanceof Dot ? entity.radius * 2 : entity.width;
+                const entityHeight = entity instanceof Dot ? entity.radius * 2 : entity.height;
+
+                return this.x + this.width > entityX &&
+                       this.x < entityX + entityWidth &&
+                       this.y > entityY && 
+                       this.y < entityY + entityHeight; 
+            }
+        }
+
+        // ============================================================
+        // FUNZIONI UI
+        // ============================================================
+
+        function updateLivesDisplay() {
+            let lifeIcons = '';
+            const lifeMap = { 3: '👧🏼', 2: '🐺', 1: '🐴' };
+            const lostLifeIcon = '💀'; 
+            
+            for (let i = LIVES_START; i >= 1; i--) {
+                lifeIcons += (i <= lives) ? (lifeMap[i] || '❤️') : lostLifeIcon; 
+            }
+            livesDisplay.innerHTML = lifeIcons;
+        }
+
+        function updateCavalloDisplay() {
+            cavalloEnergyDisplay.textContent = cavalloEnergy;
+            const isReadyToHeal = cavalloEnergy >= CAVALLO_MAX_ENERGY && lives < LIVES_START;
+
+            if (isReadyToHeal) {
+                healButton.disabled = false;
+                healButton.classList.remove('bg-pink-600', 'hover:bg-pink-700');
+                healButton.classList.add('bg-green-500', 'hover:bg-green-600');
+            } else {
+                healButton.disabled = true;
+                healButton.classList.remove('bg-green-500', 'hover:bg-green-600');
+                healButton.classList.add('bg-pink-600', 'hover:bg-pink-700');
+            }
+        }
+
+        function updateAmmoDisplay() {
+            ammoDisplay.textContent = ammunition;
+        }
+
+        function updateScore() {
+            // CORREZIONE #6: Punteggio minimo 0
+            score = Math.max(0, score);
+            scoreDisplay.textContent = score;
+            
+            // Aggiorna high score
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = highScore;
+                localStorage.setItem('mondiallo_highscore', highScore.toString());
+            }
+        }
+
+        // ============================================================
+        // AZIONI DI GIOCO
+        // ============================================================
+
+        function healAlly() {
+            if (cavalloEnergy >= CAVALLO_MAX_ENERGY && lives < LIVES_START) {
+                lives++;
+                cavalloEnergy = 0;
+                updateLivesDisplay();
+                updateCavalloDisplay();
+                
+                van.color = '#10b981';
+                setTimeout(() => { if (van) van.color = van.defaultColor; }, 200);
+                sound.heal();
+                spawnParticles(van.x + VAN_WIDTH/2, van.y + VAN_HEIGHT/2, '#10b981', 12);
+            }
+        }
+        
+        function shoot() {
+            if (!isGameRunning || isPaused) return;
+            if (ammunition >= SHOT_COST) {
+                ammunition -= SHOT_COST;
+                bullets.push(new Bullet(van.x, van.y));
+                updateAmmoDisplay();
+                sound.shoot();
+                
+                van.color = '#FFD700'; 
+                setTimeout(() => { if (van) van.color = van.defaultColor; }, 80);
+            }
+        }
+
+        function showTemporaryDeathScreen() {
+            messageScreen.style.display = 'none';
+            deathImageContainer.style.display = 'flex';
+            isPaused = true;
+            sound.hit();
+
+            setTimeout(() => {
+                deathImageContainer.style.display = 'none';
+                
+                // CORREZIONE #2: Attiva invincibilità
+                isInvincible = true;
+                invincibleTimer = INVINCIBILITY_DURATION;
+                invincibleFlashTimer = 0;
+                vanVisible = true;
+                
+                isPaused = false;
+                lastUpdateTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }, DEATH_SCREEN_MS); 
+        }
+
+        // ============================================================
+        // GAME LOOP
+        // ============================================================
+
+        function initializeGame() {
+            score = 0;
+            lives = LIVES_START; 
+            cavalloEnergy = 0; 
+            ammunition = 0; 
+            bullets = []; 
+            particles = [];
+            isPaused = false;
+            dots = [];
+            frameCount = 0;
+            spawnTimer = 0;
+            gameTime = 0;
+            currentDifficulty = 0;
+            isInvincible = false;
+            invincibleTimer = 0;
+            vanVisible = true;
+            
+            scoreDisplay.textContent = score;
+            updateLivesDisplay();
+            updateCavalloDisplay(); 
+            updateAmmoDisplay(); 
+            
+            difficultyBadge.textContent = 'Livello 1 - Facile';
+            difficultyBadge.className = 'difficulty-badge bg-green-500 text-white';
+            
+            const startY = GAME_HEIGHT / 2 - VAN_HEIGHT / 2;
+            van = new Van(50, startY);
+            
+            messageScreen.style.display = 'none'; 
+            deathImageContainer.style.display = 'none'; 
+        }
+
+        function spawnDotOrSyringe() {
+            const diff = getDifficulty();
+            const isSyringe = Math.random() < diff.syringeChance;
+            const isPinkSheep = !isSyringe && Math.random() < PINK_SHEEP_CHANCE;
+            const isAmmoKit = !isSyringe && !isPinkSheep && Math.random() < AMMO_CHANCE; 
+
+            let entityHeight;
+            let entity;
+
+            if (isAmmoKit) {
+                entityHeight = 30; 
+                const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight; 
+                entity = new AmmoKit(y);
+            } else if (isSyringe) {
+                entityHeight = SYRINGE_HEIGHT;
+                const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight; 
+                entity = new Syringe(y);
+            } else {
+                entityHeight = DOT_EMOJI_SIZE;
+                const y = Math.random() * (GAME_HEIGHT - entityHeight * 2) + entityHeight;
+                let type = isPinkSheep ? 'pink' : (Math.random() < 0.7 ? 'red' : 'blue');
+                entity = new Dot(y, type);
+            }
+
+            if (entity) dots.push(entity);
+        }
+
+        function updateGame(dt) {
+            if (isPaused) return;
+            
+            // Aggiorna tempo di gioco
+            gameTime += dt;
+            updateDifficulty();
+            
+            // CORREZIONE #2: Aggiorna invincibilità
+            if (isInvincible) {
+                invincibleTimer -= dt * 1000;
+                invincibleFlashTimer += dt * 1000;
+                
+                if (invincibleFlashTimer >= INVINCIBILITY_FLASH_RATE) {
+                    invincibleFlashTimer = 0;
+                    vanVisible = !vanVisible;
+                }
+                
+                if (invincibleTimer <= 0) {
+                    isInvincible = false;
+                    vanVisible = true;
+                }
+            }
+            
+            van.update(dt);
+            
+            // CORREZIONE #1 e #3: Spawn basato su tempo, non frame
+            const diff = getDifficulty();
+            spawnTimer += dt * 1000;
+            const spawnInterval = (diff.spawnInterval / TARGET_FPS) * 1000;
+            
+            if (spawnTimer >= spawnInterval) {
+                spawnTimer = 0;
+                spawnDotOrSyringe();
+            }
+
+            // Aggiorna entità
+            dots.forEach(entity => entity.update(dt)); 
+            dots = dots.filter(entity => {
+                const entityWidth = (entity instanceof Syringe) ? entity.width + 15 : (entity instanceof Dot ? entity.radius * 2 : entity.width);
+                return entity.x > -entityWidth;
+            });
+
+            // Aggiorna proiettili
+            bullets.forEach(bullet => bullet.update(dt));
+            bullets = bullets.filter(bullet => bullet.x < GAME_WIDTH); 
+
+            // Collisioni proiettili-nemici
+            bullets.forEach(bullet => {
+                if (bullet.isHit) return;
+                dots.forEach(entity => {
+                    if (entity instanceof Syringe || (entity instanceof Dot && entity.type === 'blue')) {
+                        if (entity.isHit || entity.isCollected) return;
+                        if (bullet.checkCollision(entity)) {
+                            bullet.isHit = true;
+                            entity.isHit = true; 
+                            
+                            // Punteggio per aver sparato ai nemici
+                            if (entity instanceof Syringe) {
+                                score += 100; // Siringa distrutta: +100 punti
+                                spawnParticles(entity.x + entity.width/2, entity.y + entity.height/2, '#ff0000', 10);
+                            } else if (entity instanceof Dot && entity.type === 'blue') {
+                                score += 30; // Mascherina distrutta: +30 punti
+                                spawnParticles(entity.x, entity.y, '#4a90d9', 8);
+                            }
+                            
+                            updateScore();
+                            sound.collect();
+                        }
+                    }
+                });
+            });
+            
+            bullets = bullets.filter(bullet => !bullet.isHit);
+            dots = dots.filter(entity => !entity.isHit); 
+
+            // Collisioni Van-Entità
+            dots.forEach(entity => {
+                if (entity.isCollected) return;
+                if (entity.checkCollision(van)) {
+                    
+                    if (entity instanceof AmmoKit) { 
+                        entity.isCollected = true;
+                        ammunition = Math.min(ammunition + AMMO_GAIN, AMMO_MAX);
+                        updateAmmoDisplay();
+                        sound.collect();
+                        spawnParticles(entity.x + entity.width/2, entity.y + entity.height/2, '#FFD700', 8);
+                    } else if (entity instanceof Dot) {
+                        entity.isCollected = true;
+                        
+                        if (entity.type === 'red') {
+                            score += SCORE_GAIN;
+                            sound.collect();
+                            spawnParticles(entity.x, entity.y, '#ff6b6b', 6);
+                        } else if (entity.type === 'blue') {
+                            score -= SCORE_LOSS;
+                            sound.hit();
+                            spawnParticles(entity.x, entity.y, '#4a90d9', 6);
+                        } else if (entity.type === 'pink') { 
+                            if (cavalloEnergy < CAVALLO_MAX_ENERGY) {
+                                cavalloEnergy = Math.min(cavalloEnergy + PINK_SHEEP_GAIN, CAVALLO_MAX_ENERGY);
+                            }
+                            updateCavalloDisplay();
+                            sound.collect();
+                            spawnParticles(entity.x, entity.y, '#f472b6', 8);
+                        }
+                        
+                        updateScore();
+                    } 
+                    else if (entity instanceof Syringe) {
+                        // CORREZIONE #2: Controlla invincibilità
+                        if (isInvincible) return;
+                        
+                        entity.isHit = true; 
+                        
+                        const lifeLost = lives; 
+                        lives--;
+                        updateLivesDisplay();
+                        updateCavalloDisplay(); 
+                        
+                        van.color = '#ff0000'; 
+                        setTimeout(() => { if (van) van.color = van.defaultColor; }, 200);
+                        
+                        spawnParticles(van.x + VAN_WIDTH/2, van.y + VAN_HEIGHT/2, '#ff0000', 15);
+                        
+                        isPaused = true;
+                        
+                        if (lives >= 1) {
+                            showTemporaryDeathScreen();
+                        }
+                    }
+                }
+            });
+
+            dots = dots.filter(entity => !entity.isCollected);
+
+            // Aggiorna particelle
+            particles.forEach(p => p.update(dt));
+            particles = particles.filter(p => p.life > 0);
+
+            if (lives <= 0) {
+                gameOver();
+            }
+
+            frameCount++;
+        }
+
+        function drawRoad() {
+            // Sfondo strada
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Linea centrale tratteggiata
+            const roadLineHeight = 5;
+            const roadLineY = GAME_HEIGHT / 2 - roadLineHeight / 2;
+            const dashLength = 20;
+            const dashGap = 20;
+            const diff = getDifficulty();
+            const lineSpeed = diff.dotSpeed * 60; 
+            
+            ctx.strokeStyle = '#fef3c7';
+            ctx.lineWidth = roadLineHeight;
+            ctx.lineCap = 'butt';
+            const totalWidth = dashLength + dashGap;
+            
+            // CORREZIONE #1: Animazione strada basata su tempo
+            const lineOffset = (gameTime * lineSpeed) % totalWidth;
+
+            ctx.beginPath();
+            for (let i = 0; i < GAME_WIDTH + totalWidth; i += totalWidth) {
+                let startX = i - lineOffset;
+                if (startX < -dashLength) startX += totalWidth; 
+                if (startX + dashLength > 0 && startX < GAME_WIDTH) {
+                    ctx.moveTo(startX, roadLineY);
+                    ctx.lineTo(startX + dashLength, roadLineY);
+                }
+            }
+            ctx.stroke();
+            
+            // Erba
+            ctx.fillStyle = '#65a30d';
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT * 0.1);
+            ctx.fillRect(0, GAME_HEIGHT * 0.9, GAME_WIDTH, GAME_HEIGHT * 0.1);
+
+            // Dettagli erba
+            ctx.fillStyle = '#4d7c0f';
+            for (let i = 0; i < GAME_WIDTH; i += 30) {
+                const offset = (gameTime * lineSpeed * 0.5) % 30;
+                ctx.fillRect(i - offset, GAME_HEIGHT * 0.08, 2, GAME_HEIGHT * 0.02);
+                ctx.fillRect(i - offset + 15, GAME_HEIGHT * 0.92, 2, GAME_HEIGHT * 0.02);
+            }
+        }
+
+        function drawGame() {
+            drawRoad();
+            particles.forEach(p => p.draw());
+            dots.forEach(entity => entity.draw());
+            bullets.forEach(bullet => bullet.draw()); 
+            van.draw();
+            
+            // Barra invincibilità
+            if (isInvincible) {
+                const barWidth = (invincibleTimer / INVINCIBILITY_DURATION) * 100;
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillRect(van.x, van.y - 10, VAN_WIDTH, 5);
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(van.x, van.y - 10, VAN_WIDTH * (barWidth / 100), 5);
+            }
+        }
+
+        // CORREZIONE #7: FPS counter stabilizzato con media mobile
+        function updateFPS(delta) {
+            if (delta > 0) {
+                fpsSamples.push(1000 / delta);
+                if (fpsSamples.length > 30) fpsSamples.shift();
+                displayFps = Math.round(fpsSamples.reduce((a, b) => a + b, 0) / fpsSamples.length);
+                fpsDisplay.textContent = displayFps;
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (!isGameRunning) return;
+            if (isPaused) return;
+
+            const delta = timestamp - lastUpdateTime;
+            lastUpdateTime = timestamp;
+
+            // CORREZIONE #1: Calcola delta time normalizzato
+            const dt = Math.min(delta / 1000, 0.05); // Cap a 50ms per evitare salti
+            
+            updateFPS(delta);
+            updateGame(dt);
+            drawGame();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            sound.init(); // Inizializza audio al primo click
+            initializeGame();
+            isGameRunning = true;
+            gameStartTime = performance.now();
+            lastUpdateTime = performance.now();
+            fpsSamples = [];
+            gameLoop(performance.now());
+        }
+
+        function togglePause() {
+            if (!isGameRunning || lives <= 0 || deathImageContainer.style.display === 'flex') return; 
+
+            isPaused = !isPaused;
+            
+            if (isPaused) {
+                keys = {}; 
+                
+                messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; 
+                
+                messageTitle.textContent = "⏸️ GIOCO IN PAUSA";
+                messageText.textContent = "Premi ESC per riprendere.";
+                messageTitle.style.display = 'block';
+                messageText.style.display = 'block';
+                startButton.style.display = 'none'; 
+                messageScreen.style.display = 'flex';
+            } else {
+                messageScreen.style.display = 'none';
+                lastUpdateTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function gameOver() {
+            isGameRunning = false;
+            sound.gameOver();
+            
+            van.color = '#4a5568'; 
+            
+            deathImageContainer.style.display = 'none';
+
+            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'; 
+            
+            messageTitle.textContent = "💀 GAME OVER!";
+            
+            const isNewRecord = score >= highScore && score > 0;
+            messageText.innerHTML = `Vi hanno siringati tutti!<br><br>
+                <span class="text-2xl">Punteggio: <span class="text-yellow-400 font-bold">${score}</span></span><br>
+                <span class="text-lg">Tempo: ${Math.floor(gameTime)}s | Livello: ${currentDifficulty + 1}</span>
+                ${isNewRecord ? '<br><span class="text-xl text-yellow-300 font-bold mt-2">🏆 NUOVO RECORD!</span>' : ''}`; 
+            
+            startButton.textContent = "🔄 Gioca Ancora";
+            
+            messageTitle.style.display = 'block';
+            messageText.style.display = 'block';
+            startButton.style.display = 'inline-block';
+            messageScreen.style.display = 'flex'; 
+        }
+
+        // ============================================================
+        // INPUT
+        // ============================================================
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                togglePause();
+            }
+            
+            if (e.key.toUpperCase() === 'S' && !healButton.disabled && isGameRunning && !isPaused) {
+                healAlly();
+            }
+            
+            if (e.key.toUpperCase() === 'F' && isGameRunning && !isPaused) {
+                shoot();
+            }
+
+            if (isGameRunning && !isPaused) {
+                keys[e.key] = true;
+                // Previene scroll con frecce
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Inizializza audio al primo click (requisito browser)
+        document.addEventListener('click', () => {
+            sound.init();
+        }, { once: true });
+
+        // ============================================================
+        // SETUP INIZIALE
+        // ============================================================
+
+        window.onload = function () {
+            initializeGame();
+            isGameRunning = false;
+            
+            messageScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.7)'; 
+            messageScreen.style.display = 'flex'; 
+            messageTitle.style.display = 'block';
+            messageText.style.display = 'block';
+            startButton.style.display = 'inline-block';
+            
+            // Disegna stato iniziale
+            drawGame();
+        }
+
     </script>
 </body>
 </html>
