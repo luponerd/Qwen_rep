@@ -196,6 +196,24 @@
             font-size: 0.75rem;
             text-transform: uppercase;
         }
+
+        #skatersContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .skater {
+            position: absolute;
+            width: 50px;
+            height: auto;
+            transition: all 0.1s linear;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+        }
     </style>
 </head>
 <body>
@@ -225,11 +243,17 @@
                 🏆 Max: <span id="highScoreDisplay">0</span>
             </span>
 
+            <span class="text-lg font-bold text-blue-400">
+                🛼 <span id="skaterCountDisplay">0</span>
+            </span>
+
             <span class="text-sm font-bold text-gray-400">FPS: <span id="fpsDisplay">60</span></span>
         </div>
 
         <div class="relative">
             <canvas id="gameCanvas"></canvas>
+            
+            <div id="skatersContainer"></div>
             
             <div id="difficultyBadge" class="difficulty-badge bg-green-500 text-white">Livello 1</div>
             
@@ -249,7 +273,9 @@
                         <span class="text-red-300">💥 Spara alle siringhe: +100 punti</span><br><br>
                         <span class="font-bold text-yellow-300">F</span> = Spara &nbsp;|&nbsp; 
                         <span class="font-bold text-pink-300">S</span> = Cura &nbsp;|&nbsp; 
-                        <span class="font-bold text-gray-300">ESC</span> = Pausa
+                        <span class="font-bold text-blue-300">H</span> = Incanta 🛼<br>
+                        <span class="font-bold text-gray-300">ESC</span> = Pausa<br><br>
+                        <span class="text-sm text-gray-400">Le pattinatrici appaiono casualmente ai lati dello schermo. Premi H per farle agganciare al furgone!</span>
                     </p>
                     <button 
                         id="startButton" 
@@ -302,6 +328,7 @@
         const deathCharacterImage = document.getElementById('deathCharacterImage');
         const dartImage = document.getElementById('dartImage');
         const magicSpray = document.getElementById('magicSpray');
+        const skaterCountDisplay = document.getElementById('skaterCountDisplay');
 
         // --- GESTIONE VOLUME MUSICA ---
         const VOLUME_NORMAL = 0.6; 
@@ -385,6 +412,12 @@
                 setTimeout(() => this.playTone(659, 0.1, 'sine', 0.12), 100);
                 setTimeout(() => this.playTone(784, 0.1, 'sine', 0.12), 200);
                 setTimeout(() => this.playTone(1047, 0.2, 'sine', 0.12), 300);
+            }
+
+            honk() {
+                // Suono clacson: due toni brevi
+                this.playTone(440, 0.15, 'square', 0.2);
+                setTimeout(() => this.playTone(520, 0.15, 'square', 0.2), 180);
             }
         }
 
@@ -484,6 +517,20 @@
         let lastUpdateTime = performance.now();
         let spawnTimer = 0;
         let gameStartTime = 0;
+        
+        // Pattinatrici
+        let skaters = []; // pattinatrici agganciate al furgone
+        let freeSkaters = []; // pattinatrici libere sullo schermo
+        let skaterAnimationTimer = 0;
+        let skaterCurrentFrame = 0;
+        const SKATER_ANIMATION_SPEED = 200; // ms per frame
+        const MAX_SKATERS = 3;
+        
+        // Spawn casuale incrementale
+        let skaterSpawnChance = 0.05; // parte dal 5%
+        let skaterSpawnTimer = 0;
+        const SKATER_SPAWN_INTERVAL = 10000; // 10 secondi
+        const SKATER_SPAWN_INCREMENT = 0.03; // +3% ogni 10 secondi
 
         // CORREZIONE #2: Stato invincibilità
         let isInvincible = false;
@@ -498,6 +545,182 @@
         // CORREZIONE #7: FPS counter stabilizzato
         let fpsSamples = [];
         let displayFps = 60;
+
+        // ============================================================
+        // SISTEMA PATTINATRICI
+        // ============================================================
+        
+        class Skater {
+            constructor(x, y, attached = false) {
+                this.x = x;
+                this.y = y;
+                this.attached = attached; // true se agganciata al furgone
+                this.offsetX = 0; // offset quando agganciata
+                this.offsetY = 0;
+                this.speed = 2 + Math.random() * 2; // velocità pattinatrice libera
+                this.direction = Math.random() < 0.5 ? -1 : 1; // direzione casuale
+                
+                this.element = document.createElement('img');
+                this.element.className = 'skater';
+                this.element.src = 'img/skater1.png';
+                this.element.style.display = 'block';
+                this.element.style.left = x + 'px';
+                this.element.style.top = y + 'px';
+                
+                // Flip orizzontale basato sulla direzione
+                if (this.direction < 0) {
+                    this.element.style.transform = 'scaleX(-1)';
+                }
+                
+                document.getElementById('skatersContainer').appendChild(this.element);
+            }
+            
+            update(dt, vanX, vanY, vanWidth, vanHeight) {
+                if (this.attached) {
+                    // Segui il furgone
+                    const targetX = vanX + this.offsetX;
+                    const targetY = vanY + vanHeight + this.offsetY;
+                    
+                    // Movimento fluido verso la posizione target
+                    this.x += (targetX - this.x) * 0.1;
+                    this.y += (targetY - this.y) * 0.1;
+                } else {
+                    // Pattinatrice libera: si muove sullo schermo
+                    this.x += this.speed * this.direction * dt * 60;
+                    
+                    // Rimbalza sui bordi
+                    if (this.x < 0) {
+                        this.x = 0;
+                        this.direction = 1;
+                        this.element.style.transform = 'scaleX(1)';
+                    } else if (this.x > GAME_WIDTH - 50) {
+                        this.x = GAME_WIDTH - 50;
+                        this.direction = -1;
+                        this.element.style.transform = 'scaleX(-1)';
+                    }
+                }
+                
+                this.element.style.left = this.x + 'px';
+                this.element.style.top = this.y + 'px';
+            }
+            
+            attach(vanX, vanY, vanWidth, vanHeight) {
+                this.attached = true;
+                // Calcola offset casuale dietro al furgone
+                this.offsetX = -30 + Math.random() * 60;
+                this.offsetY = 10 + Math.random() * 20;
+                
+                // Effetto visivo: scintille quando si aggancia
+                spawnParticles(this.x + 25, this.y + 25, '#60a5fa', 10);
+            }
+            
+            setFrame(frame) {
+                this.element.src = frame === 0 ? 'img/skater1.png' : 'img/skater2.png';
+            }
+            
+            destroy() {
+                if (this.element.parentNode) {
+                    this.element.parentNode.removeChild(this.element);
+                }
+            }
+        }
+        
+        function addSkater() {
+            // Il tasto H "incanta" le pattinatrici libere, facendole agganciare
+            if (freeSkaters.length === 0) return;
+            if (skaters.length >= MAX_SKATERS) return;
+            
+            // Suono clacson
+            sound.honk();
+            
+            // Aggancia tutte le pattinatrici libere (se c'è spazio)
+            while (freeSkaters.length > 0 && skaters.length < MAX_SKATERS) {
+                const skater = freeSkaters.shift();
+                skater.attach(van.x, van.y, van.width, van.height);
+                skaters.push(skater);
+            }
+        }
+        
+        function spawnFreeSkater() {
+            // Spawn casuale ai lati dello schermo (posizioni visibili)
+            const side = Math.floor(Math.random() * 4); // 0: sinistra, 1: destra, 2: basso-sinistra, 3: basso-destra
+            let x, y;
+            
+            if (side === 0) {
+                // Lato sinistro (visibile)
+                x = 10;
+                y = GAME_HEIGHT * 0.6 + Math.random() * GAME_HEIGHT * 0.3;
+            } else if (side === 1) {
+                // Lato destro (visibile)
+                x = GAME_WIDTH - 60;
+                y = GAME_HEIGHT * 0.6 + Math.random() * GAME_HEIGHT * 0.3;
+            } else if (side === 2) {
+                // Basso-sinistra
+                x = 10 + Math.random() * 100;
+                y = GAME_HEIGHT - 80;
+            } else {
+                // Basso-destra
+                x = GAME_WIDTH - 110 + Math.random() * 100;
+                y = GAME_HEIGHT - 80;
+            }
+            
+            const skater = new Skater(x, y, false);
+            freeSkaters.push(skater);
+            
+            console.log(`🛼 Pattinatrice spawnata! Posizione: (${x.toFixed(0)}, ${y.toFixed(0)}), Lato: ${side}`);
+            console.log(`Pattinatrici libere: ${freeSkaters.length}, Agganciate: ${skaters.length}`);
+        }
+        
+        function updateSkaters(dt) {
+            // Aggiorna animazione
+            skaterAnimationTimer += dt * 1000;
+            if (skaterAnimationTimer >= SKATER_ANIMATION_SPEED) {
+                skaterAnimationTimer = 0;
+                skaterCurrentFrame = 1 - skaterCurrentFrame; // alterna 0 e 1
+                
+                // Aggiorna tutte le pattinatrici (libere e agganciate)
+                skaters.forEach(skater => skater.setFrame(skaterCurrentFrame));
+                freeSkaters.forEach(skater => skater.setFrame(skaterCurrentFrame));
+            }
+            
+            // Aggiorna posizione pattinatrici agganciate
+            skaters.forEach(skater => skater.update(dt, van.x, van.y, van.width, van.height));
+            
+            // Aggiorna posizione pattinatrici libere
+            freeSkaters.forEach(skater => skater.update(dt, van.x, van.y, van.width, van.height));
+            
+            // Aggiorna display conteggio pattinatrici
+            skaterCountDisplay.textContent = freeSkaters.length;
+            
+            // Spawn casuale incrementale
+            skaterSpawnTimer += dt * 1000;
+            if (skaterSpawnTimer >= SKATER_SPAWN_INTERVAL) {
+                skaterSpawnTimer = 0;
+                
+                // Tenta di spawnare una pattinatrice
+                const roll = Math.random();
+                if (roll < skaterSpawnChance) {
+                    spawnFreeSkater();
+                    // Reset della probabilità dopo lo spawn
+                    skaterSpawnChance = 0.05;
+                } else {
+                    // Aumenta la probabilità per il prossimo tentativo
+                    skaterSpawnChance += SKATER_SPAWN_INCREMENT;
+                    console.log(`Pattinatrice non spawnata (${(roll * 100).toFixed(1)}% < ${(skaterSpawnChance * 100).toFixed(1)}%)`);
+                }
+            }
+        }
+        
+        function clearSkaters() {
+            skaters.forEach(skater => skater.destroy());
+            freeSkaters.forEach(skater => skater.destroy());
+            skaters = [];
+            freeSkaters = [];
+            skaterAnimationTimer = 0;
+            skaterCurrentFrame = 0;
+            skaterSpawnChance = 0.05;
+            skaterSpawnTimer = 0;
+        }
 
         // ============================================================
         // SISTEMA PARTICELLE (feedback visivo)
@@ -1057,6 +1280,10 @@
             dots = [];
             frameCount = 0;
             spawnTimer = 0;
+            
+            // Pulisci pattinatrici
+            clearSkaters();
+            skaterCountDisplay.textContent = '0';
             gameTime = 0;
             currentDifficulty = 0;
             isInvincible = false;
@@ -1246,6 +1473,9 @@
             // Aggiorna particelle
             particles.forEach(p => p.update(dt));
             particles = particles.filter(p => p.life > 0);
+            
+            // Aggiorna pattinatrici
+            updateSkaters(dt);
 
             if (lives <= 0) {
                 gameOver();
@@ -1447,6 +1677,11 @@
             
             if (e.key.toUpperCase() === 'F' && isGameRunning && !isPaused) {
                 shoot();
+            }
+            
+            // Clacson per chiamare le pattinatrici
+            if (e.key.toUpperCase() === 'H' && isGameRunning && !isPaused) {
+                addSkater();
             }
 
             if (isGameRunning && !isPaused) {
